@@ -1,0 +1,3125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>德育学分记录系统</title>
+<script src="xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei", Arial, sans-serif;
+    background: #f4f6f9;
+    margin: 0;
+    padding: 16px;
+    color: #333;
+  }
+  h1 { text-align: center; color: #2c3e50; margin: 8px 0 16px; font-size: 22px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  .role-bar {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    background: #fff; padding: 12px 18px; border-radius: 10px;
+    margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  }
+  .role-info { font-size: 15px; font-weight: bold; color: #2c3e50; }
+  .role-info .badge {
+    display: inline-block; padding: 2px 12px; border-radius: 20px;
+    font-size: 13px; margin-left: 8px; background: #ecf0f1; color: #7f8c8d;
+  }
+  .role-info .badge.admin { background: #27ae60; color: #fff; }
+  .role-info .badge.owner { background: #8e44ad; color: #fff; }
+  .role-info .badge.helper { background: #f39c12; color: #fff; }
+  .role-actions button {
+    padding: 6px 14px; font-size: 14px; border: none; border-radius: 6px;
+    cursor: pointer; font-weight: bold; background: #3498db; color: #fff; margin-left: 8px;
+  }
+  .role-actions button.outline { background: #fff; color: #3498db; border: 1px solid #3498db; }
+  .role-actions button.purple { background: #8e44ad; color: #fff; }
+  .role-actions button:hover { opacity: 0.88; }
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+  }
+  .modal-box {
+    background: #fff; border-radius: 12px; padding: 28px 26px 22px;
+    width: 380px; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  }
+  .modal-box h3 { margin: 0 0 18px; text-align: center; color: #2c3e50; }
+  .modal-box label {
+    display: block; font-size: 14px; font-weight: bold; margin-bottom: 4px;
+  }
+  .modal-box input, .modal-box select {
+    width: 100%; padding: 9px 12px; border: 1px solid #ccc; border-radius: 6px;
+    font-size: 15px; margin-bottom: 14px; background: #fff;
+  }
+  .modal-box .btn-row { display: flex; gap: 10px; margin-top: 6px; }
+  .modal-box .btn-row button {
+    flex: 1; padding: 10px; font-size: 15px; border: none;
+    border-radius: 6px; font-weight: bold; cursor: pointer;
+  }
+  .modal-box .btn-row .confirm { background: #27ae60; color: #fff; }
+  .modal-box .btn-row .cancel { background: #ecf0f1; color: #555; }
+  .modal-box .err {
+    color: #e74c3c; font-size: 13px; min-height: 18px;
+    text-align: center; margin-bottom: 4px;
+  }
+  .score-field-group {
+    background: #f8faff; border: 1px dashed #b6d4fe;
+    border-radius: 8px; padding: 12px 12px 2px; margin-bottom: 14px;
+  }
+  .score-field-group .group-title {
+    font-size: 13px; font-weight: bold; color: #2c3e50;
+    margin-bottom: 8px;
+  }
+  .score-field-group.reason-group {
+    background: #fff8e6; border-color: #f9cb8e;
+  }
+  .captcha-row {
+    display: flex; gap: 8px; align-items: center; margin-bottom: 14px;
+  }
+  .captcha-row input {
+    flex: 1; margin-bottom: 0 !important;
+  }
+  .captcha-img {
+    width: 100px; height: 38px; border: 1px solid #ccc; border-radius: 6px;
+    cursor: pointer; background: #f0f0f0; display: flex; align-items: center;
+    justify-content: center; font-size: 20px; font-weight: bold; letter-spacing: 3px;
+    color: #2c3e50; user-select: none; flex-shrink: 0;
+    font-family: "Courier New", monospace;
+  }
+  .card {
+    background: #fff; border-radius: 10px; padding: 16px;
+    margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  }
+  .card h3 {
+    margin: 0 0 12px; font-size: 16px; color: #2c3e50;
+    border-left: 4px solid #3498db; padding-left: 8px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card h3 .fold-toggle {
+    font-size: 13px; font-weight: bold; color: #3498db;
+    cursor: pointer; user-select: none; border: 1px solid #3498db;
+    border-radius: 20px; padding: 3px 12px; background: #fff;
+    white-space: nowrap; margin-left: 10px;
+  }
+  .card h3 .fold-toggle:hover { background: #eaf4fd; }
+  .card h3 .download-log-btn {
+    font-size: 13px; font-weight: bold; color: #fff;
+    cursor: pointer; user-select: none; border: none;
+    border-radius: 20px; padding: 4px 14px; background: #8e44ad;
+    white-space: nowrap; margin-left: 8px;
+  }
+  .card h3 .download-log-btn:hover { opacity: 0.88; }
+  .fold-content { transition: all 0.2s; }
+
+  .top-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .top-bar label { font-weight: bold; }
+  .top-bar input {
+    padding: 8px 10px; font-size: 15px; border: 1px solid #ccc;
+    border-radius: 6px; width: 120px;
+  }
+  .week-wrap { display: flex; align-items: center; gap: 4px; }
+  .week-wrap input { width: 70px !important; text-align: center; }
+  .week-wrap .week-suffix { font-size: 15px; font-weight: bold; color: #2c3e50; }
+  .top-bar input[type="date"] { width: 160px; cursor: pointer; }
+
+  .type-switch { display: flex; gap: 8px; }
+  .type-switch button {
+    padding: 10px 24px; font-size: 16px; border: 2px solid #ccc;
+    background: #fff; color: #555; border-radius: 8px; cursor: pointer; font-weight: bold;
+  }
+  .type-switch button.active-bonus { background: #27ae60; border-color: #27ae60; color: #fff; }
+  .type-switch button.active-deduct { background: #e74c3c; border-color: #e74c3c; color: #fff; }
+
+  #behaviorTitle {
+    font-size: 17px; padding: 8px 12px; border-radius: 8px;
+    border-left: none; display: flex; align-items: center; gap: 8px;
+    transition: all 0.2s ease;
+  }
+  #behaviorTitle.bonus-title {
+    background: linear-gradient(90deg, #eafaf1 0%, #ffffff 100%);
+    color: #1e8449; border-left: 5px solid #27ae60;
+    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.15);
+  }
+  #behaviorTitle.deduct-title {
+    background: linear-gradient(90deg, #fdecea 0%, #ffffff 100%);
+    color: #c0392b; border-left: 5px solid #e74c3c;
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.15);
+  }
+  #behaviorTitle .title-icon { font-size: 20px; }
+  #behaviorTitle .title-tag {
+    font-size: 12px; font-weight: bold; padding: 2px 10px;
+    border-radius: 20px; margin-left: auto;
+  }
+  #behaviorTitle.bonus-title .title-tag { background: #27ae60; color: #fff; }
+  #behaviorTitle.deduct-title .title-tag { background: #e74c3c; color: #fff; }
+
+  .student-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px;
+  }
+  .student-grid button {
+    padding: 10px 6px; font-size: 14px; border: 1px solid #d0d7de;
+    background: #f9fbfd; border-radius: 8px; cursor: pointer; transition: all 0.15s;
+  }
+  .student-grid button:hover { background: #eaf4fd; border-color: #3498db; transform: translateY(-1px); }
+  .student-grid button.selected { background: #3498db; color: #fff; border-color: #3498db; }
+  .student-grid button.has-record { border-color: #f39c12; background: #fff8e6; }
+  .student-grid button.has-record.selected { background: #3498db; color: #fff; }
+
+  .behavior-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px; max-height: 320px; overflow-y: auto; padding-right: 4px; margin-bottom: 12px;
+  }
+  .behavior-grid button {
+    padding: 9px 6px; font-size: 13px; border: 1px solid #d0d7de;
+    background: #f9fbfd; border-radius: 8px; cursor: pointer;
+    text-align: center; transition: all 0.15s;
+  }
+  .behavior-grid button:hover { background: #eaf4fd; border-color: #3498db; }
+  .behavior-grid button.selected { background: #3498db; color: #fff; border-color: #3498db; }
+  .behavior-grid.bonus-mode button:hover { background: #eafaf1; border-color: #27ae60; }
+  .behavior-grid.bonus-mode button.selected { background: #27ae60; border-color: #27ae60; color: #fff; }
+  .behavior-grid.deduct-mode button:hover { background: #fdecea; border-color: #e74c3c; }
+  .behavior-grid.deduct-mode button.selected { background: #e74c3c; border-color: #e74c3c; color: #fff; }
+
+  .behavior-section-title {
+    grid-column: 1 / -1; font-size: 12px; font-weight: bold;
+    color: #7f8c8d; padding: 6px 0 4px;
+    border-bottom: 1px dashed #e0e6ed; margin-bottom: 4px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .behavior-section-title .count {
+    font-weight: normal; color: #95a5a6; font-size: 11px;
+  }
+  .behavior-section-title.custom-title {
+    color: #8e44ad; border-bottom-color: #d2b4de; margin-top: 6px;
+  }
+  .behavior-section-title.custom-title .count { color: #a569bd; }
+
+  .behavior-grid button.builtin-item {
+    border: 1px solid #d0d7de; background: #f9fbfd;
+  }
+  .behavior-grid button.custom-item {
+    position: relative; display: flex; align-items: center;
+    justify-content: flex-start; gap: 6px;
+    border: 1.5px dashed #b07fd6;
+    background: linear-gradient(135deg, #faf5ff 0%, #f3e8fc 100%);
+    padding-left: 14px; font-weight: 500; color: #6c3483;
+  }
+  .behavior-grid button.custom-item::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 4px; background: #9b59b6; border-radius: 8px 0 0 8px;
+  }
+  .behavior-grid button.custom-item:hover {
+    background: linear-gradient(135deg, #f5eaff 0%, #ecd8fa 100%);
+    border-color: #8e44ad; transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(142, 68, 173, 0.15);
+  }
+  .behavior-grid button.custom-item.selected {
+    background: linear-gradient(135deg, #8e44ad 0%, #6c3483 100%);
+    border: 1.5px solid #6c3483; color: #fff;
+  }
+  .behavior-grid button.custom-item.selected::before { background: #f5b041; }
+  .behavior-grid button.custom-item .beh-label {
+    flex: 1 1 auto; text-align: left;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .behavior-grid button.custom-item .del-custom {
+    flex-shrink: 0; width: 20px; height: 20px; line-height: 18px;
+    text-align: center; font-size: 12px; font-weight: bold;
+    color: #e74c3c; background: #fff; border: 1px solid #f5b7b1;
+    border-radius: 50%; cursor: pointer; user-select: none;
+    transition: all 0.15s; padding: 0;
+  }
+  .behavior-grid button.custom-item .del-custom:hover {
+    background: #e74c3c; color: #fff; border-color: #e74c3c; transform: scale(1.15);
+  }
+  .behavior-grid button.custom-item.selected .del-custom {
+    background: rgba(255,255,255,0.25); color: #fff; border-color: rgba(255,255,255,0.6);
+  }
+  .behavior-grid button.custom-item.selected .del-custom:hover {
+    background: #fff; color: #e74c3c; border-color: #fff;
+  }
+  @keyframes customPop {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.06); }
+    100% { transform: scale(1); }
+  }
+  .behavior-grid button.custom-item.just-added { animation: customPop 0.4s ease; }
+
+  .custom-behavior-area {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    background: #f8faff; border: 1px dashed #b6d4fe; border-radius: 8px;
+    padding: 12px 14px; margin-top: 6px;
+  }
+  .custom-behavior-area label { font-size: 14px; font-weight: bold; color: #2c3e50; }
+  .custom-behavior-area input {
+    padding: 8px 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px;
+  }
+  .custom-behavior-area input.behavior-name { width: 180px; }
+  .custom-behavior-area input.behavior-score { width: 80px; }
+  .custom-behavior-area button {
+    padding: 8px 18px; font-size: 14px; border: none;
+    border-radius: 6px; background: #3498db; color: #fff; cursor: pointer; font-weight: bold;
+  }
+  .custom-behavior-area button:hover { opacity: 0.9; }
+  .custom-behavior-area .hint { font-size: 13px; color: #888; margin-left: auto; }
+  .custom-behavior-area .hint b { color: #e74c3c; }
+
+  .current-bar {
+    background: #eef6ff; border: 1px dashed #3498db; border-radius: 8px;
+    padding: 10px 14px; font-size: 14px; margin-bottom: 12px; color: #2c3e50;
+  }
+  .current-bar b { color: #e74c3c; }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
+  .toolbar button {
+    padding: 9px 16px; font-size: 14px; border: none; border-radius: 6px;
+    background: #3498db; color: #fff; cursor: pointer;
+  }
+  .toolbar button:hover { opacity: 0.9; }
+  .toolbar button.success { background: #27ae60; }
+  .toolbar button.danger { background: #e74c3c; }
+  .toolbar button.gray { background: #7f8c8d; }
+
+  .record-line {
+    padding: 8px 12px; background: #f9fbfd; border-left: 4px solid #3498db;
+    margin-bottom: 8px; border-radius: 4px; font-size: 14px;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  }
+  .record-line.deduct { border-left-color: #e74c3c; }
+  .record-line.bonus { border-left-color: #27ae60; }
+  .record-line .del {
+    color: #e74c3c; cursor: pointer; font-weight: bold; flex-shrink: 0;
+  }
+  .record-line .del:hover { text-decoration: underline; }
+  .record-line .edit-score {
+    color: #8e44ad; cursor: pointer; font-weight: bold; margin-left: 6px; flex-shrink: 0;
+  }
+  .record-line .edit-score:hover { text-decoration: underline; }
+  .record-line .meta-edit {
+    color: #888; font-size: 12px; margin-left: 4px;
+  }
+  .record-line .edited-tag {
+    display: inline-block; font-size: 11px; color: #8e44ad;
+    background: #f5eef8; border: 1px solid #d2b4de; border-radius: 10px;
+    padding: 1px 8px; margin-left: 6px; font-weight: bold;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { border: 1px solid #ddd; padding: 8px 10px; text-align: center; }
+  th { background: #3498db; color: #fff; }
+  tr:nth-child(even) { background: #f9fbfd; }
+  .rank-1 { color: #e67e22; font-weight: bold; }
+  .rank-2 { color: #7f8c8d; font-weight: bold; }
+  .rank-3 { color: #b9770e; font-weight: bold; }
+
+  .status {
+    text-align: center; color: #27ae60; font-size: 13px;
+    min-height: 18px; margin-top: 6px;
+  }
+
+  .toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: #2c3e50; color: #fff; padding: 12px 24px; border-radius: 8px;
+    font-size: 15px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999;
+  }
+  .toast.show { opacity: 1; }
+
+  body.guest .admin-only,
+  body.guest .owner-only,
+  body.guest .helper-only { display: none !important; }
+  body.helper .owner-only { display: none !important; }
+  body.helper .admin-only { display: none !important; }
+  body.helper .helper-only { display: block !important; }
+  body.admin .owner-only { display: none !important; }
+  body.admin .admin-only { display: block !important; }
+  body.admin .helper-only { display: block !important; }
+  body.owner .admin-only { display: none !important; }
+  body.owner .owner-only { display: block !important; }
+  body.owner .helper-only { display: block !important; }
+
+  .guest-tip {
+    background: #fffbe6; border: 1px solid #f0d58c; border-radius: 8px;
+    padding: 12px 18px; font-size: 14px; color: #8a6d3b;
+    margin-bottom: 16px; text-align: center;
+  }
+  .helper-tip {
+    background: #fef5e7; border: 1px solid #f9cb8e; border-radius: 8px;
+    padding: 12px 18px; font-size: 14px; color: #b9770e;
+    margin-bottom: 16px; text-align: center;
+  }
+
+  .notice-card {
+    border: 1px solid #f0d58c;
+    background: linear-gradient(180deg, #fffdf5 0%, #ffffff 100%);
+  }
+  .notice-card h3 {
+    border-left-color: #f39c12;
+    color: #b9770e;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .notice-card h3 .notice-toggle {
+    font-size: 13px; font-weight: bold; color: #3498db;
+    cursor: pointer; user-select: none; border: 1px solid #3498db;
+    border-radius: 20px; padding: 3px 12px; background: #fff;
+    white-space: nowrap;
+  }
+  .notice-card h3 .notice-toggle:hover { background: #eaf4fd; }
+  .notice-body {
+    font-size: 14px; line-height: 1.9; color: #444;
+  }
+  .notice-body p { margin: 0 0 10px; }
+  .notice-body b { color: #2c3e50; }
+  .notice-body .red-line { color: #c0392b; }
+  .notice-body .danger-box {
+    margin-top: 14px; padding: 10px 12px; background: #fff4f4;
+    border-left: 4px solid #e74c3c; border-radius: 6px;
+    color: #c0392b; font-weight: bold;
+  }
+  .notice-body .safe-box {
+    margin-top: 10px; padding: 10px 12px; background: #f0f9f4;
+    border-left: 4px solid #27ae60; border-radius: 6px;
+    color: #1e8449;
+  }
+  .notice-body ol, .notice-body ul { margin: 4px 0 10px; padding-left: 22px; }
+  .notice-body li { margin-bottom: 4px; }
+  .notice-foot {
+    margin-top: 12px; padding-top: 10px; border-top: 1px dashed #f0d58c;
+    font-size: 13px; color: #8a6d3b; text-align: center;
+  }
+  .notice-collapsed .notice-body,
+  .notice-collapsed .notice-foot { display: none; }
+
+  .login-notice {
+    font-size: 12px; color: #8a6d3b; background: #fffbe6;
+    border: 1px solid #f0d58c; border-radius: 6px;
+    padding: 8px 10px; margin-bottom: 10px; line-height: 1.7;
+  }
+  .login-notice b { color: #c0392b; }
+  .agree-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    background: #f8faff; border: 1px solid #b6d4fe; border-radius: 6px;
+    padding: 10px 12px; margin-bottom: 14px;
+    font-size: 13px; color: #2c3e50; font-weight: bold;
+    line-height: 1.6; cursor: pointer; user-select: none;
+  }
+  .agree-row input[type="checkbox"] {
+    width: 18px !important; height: 18px !important;
+    margin: 1px 0 0 0 !important; padding: 0 !important;
+    flex-shrink: 0; cursor: pointer; accent-color: #27ae60;
+  }
+  .agree-row.agree-err {
+    border-color: #e74c3c; background: #fff4f4;
+    animation: agreeShake 0.3s;
+  }
+  @keyframes agreeShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+
+  .pwd-show-box { text-align: center; }
+  .pwd-show-user { font-size: 15px; color: #555; margin-bottom: 10px; }
+  .pwd-show-value {
+    display: block;
+    background: #fffbe6; border: 2px dashed #f0d58c; border-radius: 8px;
+    padding: 14px 10px; margin: 6px 0 14px;
+    font-size: 24px; font-weight: bold; letter-spacing: 3px;
+    color: #c0392b; font-family: "Courier New", monospace;
+    word-break: break-all;
+  }
+  .pwd-show-warn {
+    background: #fff4f4; border-left: 4px solid #e74c3c; border-radius: 6px;
+    padding: 8px 12px; font-size: 13px; color: #c0392b;
+    line-height: 1.7; text-align: left; margin-bottom: 14px;
+  }
+
+  .owner-panel {
+    background: #f5eef8; border: 1px solid #d2b4de;
+    border-radius: 8px; padding: 16px; margin-bottom: 16px;
+  }
+  .owner-panel h4 { margin: 0 0 12px; color: #6c3483; }
+  .owner-panel .field-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px;
+  }
+  .owner-panel label { font-weight: bold; font-size: 14px; min-width: 80px; }
+  .owner-panel input, .owner-panel select {
+    padding: 7px 10px; border: 1px solid #ccc; border-radius: 6px;
+    font-size: 14px; width: 180px;
+  }
+  .owner-panel input[type="checkbox"] {
+    width: auto; height: 18px; margin: 0; cursor: pointer; transform: scale(1.2);
+  }
+  .owner-panel button {
+    padding: 7px 16px; background: #8e44ad; color: #fff;
+    border: none; border-radius: 6px; font-weight: bold; cursor: pointer;
+  }
+  .owner-panel button:hover { opacity: 0.9; }
+  .owner-panel button.danger { background: #e74c3c; }
+  .owner-panel .switch-hint {
+    font-size: 13px; color: #7d3c98; width: 100%; line-height: 1.6;
+  }
+  .owner-panel .switch-state {
+    font-size: 13px; font-weight: bold; padding: 3px 10px; border-radius: 20px;
+    background: #ecf0f1; color: #7f8c8d;
+  }
+  .owner-panel .switch-state.on { background: #27ae60; color: #fff; }
+  .owner-panel .switch-state.off { background: #95a5a6; color: #fff; }
+
+  .admin-panel {
+    background: #eafaf1; border: 1px solid #a9dfbf;
+    border-radius: 8px; padding: 16px; margin-bottom: 16px;
+  }
+  .admin-panel h4 { margin: 0 0 12px; color: #1e8449; }
+  .admin-panel .field-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px;
+  }
+  .admin-panel label { font-weight: bold; font-size: 14px; min-width: 80px; }
+  .admin-panel input, .admin-panel select {
+    padding: 7px 10px; border: 1px solid #ccc; border-radius: 6px;
+    font-size: 14px; width: 180px;
+  }
+  .admin-panel button {
+    padding: 7px 16px; background: #27ae60; color: #fff;
+    border: none; border-radius: 6px; font-weight: bold; cursor: pointer;
+  }
+  .admin-panel button:hover { opacity: 0.9; }
+  .admin-panel button.danger { background: #e74c3c; }
+  .admin-panel .pending-item {
+    background: #fff; border: 1px solid #f9e79f; border-radius: 6px;
+    padding: 10px 14px; margin-bottom: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 14px; gap: 10px; flex-wrap: wrap;
+  }
+  .admin-panel .pending-item .actions {
+    display: flex; gap: 10px; flex-shrink: 0;
+  }
+  .admin-panel .pending-item .approve {
+    color: #27ae60; cursor: pointer; font-weight: bold; user-select: none;
+  }
+  .admin-panel .pending-item .reject {
+    color: #e74c3c; cursor: pointer; font-weight: bold; user-select: none;
+  }
+  .admin-panel .pending-item .approve:hover,
+  .admin-panel .pending-item .reject:hover { text-decoration: underline; }
+
+  .helper-panel {
+    background: #fff8e6; border: 1px solid #f9cb8e;
+    border-radius: 8px; padding: 16px; margin-bottom: 16px;
+  }
+  .helper-panel h4 { margin: 0 0 12px; color: #b9770e; }
+  .helper-panel .my-item {
+    background: #fff; border: 1px solid #f9e79f; border-radius: 6px;
+    padding: 10px 14px; margin-bottom: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 14px; gap: 10px; flex-wrap: wrap;
+  }
+  .helper-panel .my-item .withdraw {
+    color: #e67e22; cursor: pointer; font-weight: bold;
+    user-select: none; flex-shrink: 0;
+  }
+  .helper-panel .my-item .withdraw:hover { text-decoration: underline; }
+
+  .admin-table {
+    width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px;
+  }
+  .admin-table th { background: #8e44ad; color: #fff; padding: 8px; }
+  .admin-table td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+  .admin-table tr:nth-child(even) { background: #f9f0ff; }
+  .admin-table .del-admin {
+    color: #e74c3c; cursor: pointer; font-weight: bold; user-select: none;
+  }
+  .admin-table .del-admin:hover { text-decoration: underline; }
+
+  .helper-table {
+    width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px;
+  }
+  .helper-table th { background: #f39c12; color: #fff; padding: 8px; }
+  .helper-table td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+  .helper-table tr:nth-child(even) { background: #fef5e7; }
+  .helper-table .del-helper {
+    color: #e74c3c; cursor: pointer; font-weight: bold; user-select: none;
+  }
+  .helper-table .del-helper:hover { text-decoration: underline; }
+
+  .pwd-cell {
+    font-family: "Courier New", monospace;
+    letter-spacing: 2px; color: #95a5a6; user-select: none;
+  }
+  .pwd-cell.revealed {
+    color: #c0392b; font-weight: bold; letter-spacing: 0; user-select: text;
+  }
+  .pwd-view {
+    color: #3498db; cursor: pointer; font-weight: bold;
+    margin-left: 8px; font-size: 13px; user-select: none;
+  }
+  .pwd-view:hover { text-decoration: underline; }
+  .pwd-lock-tip { font-size: 12px; color: #95a5a6; margin-left: 8px; }
+
+  .log-list {
+    max-height: 260px; overflow-y: auto; font-size: 13px;
+    background: #fff; border: 1px solid #e0d0e8; border-radius: 6px; padding: 10px;
+  }
+  .log-item {
+    padding: 6px 8px; border-bottom: 1px dashed #e8d8f0; color: #555;
+  }
+  .log-item:last-child { border-bottom: none; }
+  .log-item .log-head { color: #555; line-height: 1.6; }
+  .log-item .log-time { color: #8e44ad; font-weight: bold; margin-right: 6px; }
+  .log-item .log-line {
+    display: block; font-size: 12px; line-height: 1.6;
+    padding: 2px 8px; margin-top: 3px;
+    border-left: 2px solid #e0d0e8;
+    color: #666; word-break: break-all;
+  }
+  .log-item .log-line.log-line-reason {
+    color: #c0392b; border-left-color: #e8b8b8; font-weight: bold;
+  }
+  .log-item .log-line.log-line-content {
+    color: #1e8449; border-left-color: #a9dfbf;
+  }
+  .log-item .log-line.log-line-score {
+    color: #b9770e; border-left-color: #f9cb8e;
+  }
+  .helper-log-list {
+    max-height: 260px; overflow-y: auto; font-size: 13px;
+    background: #fff; border: 1px solid #f9cb8e; border-radius: 6px; padding: 10px;
+  }
+  .helper-log-item {
+    padding: 6px 8px; border-bottom: 1px dashed #f9cb8e; color: #555;
+  }
+  .helper-log-item:last-child { border-bottom: none; }
+  .helper-log-item .log-head { color: #555; line-height: 1.6; }
+  .helper-log-item .log-time { color: #e67e22; font-weight: bold; margin-right: 6px; }
+  .helper-log-item .log-line {
+    display: block; font-size: 12px; line-height: 1.6;
+    padding: 2px 8px; margin-top: 3px;
+    border-left: 2px solid #f9cb8e;
+    color: #666; word-break: break-all;
+  }
+
+  /* ============ ★ 搜索栏样式 ============ */
+  .search-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    background: #f8faff;
+    border: 1px solid #d0d7de;
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin-bottom: 14px;
+  }
+  .search-bar label {
+    font-weight: bold;
+    font-size: 14px;
+    color: #2c3e50;
+    white-space: nowrap;
+  }
+  .search-bar input {
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    width: 200px;
+    flex-shrink: 0;
+  }
+  .search-bar input:focus {
+    border-color: #3498db;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(52,152,219,0.15);
+  }
+  .search-bar .filter-btn {
+    padding: 8px 20px;
+    font-size: 14px;
+    border: none;
+    border-radius: 6px;
+    background: #3498db;
+    color: #fff;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  .search-bar .filter-btn:hover { opacity: 0.9; }
+  .search-bar .filter-btn.clear {
+    background: #95a5a6;
+  }
+  .search-bar .filter-btn.clear:hover { background: #7f8c8d; }
+  .search-bar .result-count {
+    font-size: 13px;
+    color: #7f8c8d;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+  .search-bar .result-count b {
+    color: #2c3e50;
+  }
+  .record-line.highlight {
+    box-shadow: 0 0 0 2px #f1c40f;
+    background: #fffbe6;
+  }
+  .record-line .highlight-keyword {
+    background: #f9e79f;
+    font-weight: bold;
+    border-radius: 2px;
+    padding: 0 2px;
+  }
+
+  /* 未授权提示 */
+  .perm-disabled-tip {
+    background: #f8f9fa; border: 1px dashed #ccc; border-radius: 6px;
+    padding: 12px 16px; color: #999; text-align: center; font-size: 14px;
+  }
+
+  /* ============ ★ 所有者面板折叠（新） ============ */
+  .owner-section {
+    background: #f5eef8; border: 1px solid #d2b4de;
+    border-radius: 8px; margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .owner-section .owner-section-header {
+    padding: 10px 16px;
+    font-weight: bold; font-size: 15px; color: #6c3483;
+    background: #ede0f5; cursor: pointer; user-select: none;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid #d2b4de;
+  }
+  .owner-section .owner-section-header:hover {
+    background: #e4d3ee;
+  }
+  .owner-section .owner-section-header .toggle-icon {
+    font-size: 13px; color: #8e44ad;
+    transition: transform 0.2s;
+  }
+  .owner-section .owner-section-header.collapsed .toggle-icon {
+    transform: rotate(-90deg);
+  }
+  .owner-section .owner-section-body {
+    padding: 14px 16px;
+    background: #faf5ff;
+  }
+  .owner-section .owner-section-body.collapsed {
+    display: none;
+  }
+  .owner-section .owner-panel {
+    margin-bottom: 0;
+    border: none;
+    background: transparent;
+    padding: 0;
+  }
+</style>
+</head>
+<body class="guest">
+
+<div class="toast" id="toast"></div>
+
+<div class="container">
+  <h1>学生行为记录系统</h1>
+
+  <div class="card notice-card" id="noticeCard">
+    <h3>
+      <span>📢 使用告知与权限规范（请务必阅读）</span>
+      <span class="notice-toggle" id="noticeToggle" onclick="toggleNotice()">收起</span>
+    </h3>
+    <div class="notice-body" id="noticeBody">
+      <p><b>一、系统用途</b><br>本系统仅用于班级学生行为、德育学分、加分扣分记录、统计排名与导出备份，不得用于与教育教学管理无关的用途。</p>
+      <p><b>二、角色权限说明</b></p>
+      <ul>
+        <li><b>访客：</b>仅可查看记录列表与排名，不能新增、删除、改分、导出或清空。</li>
+        <li><b>助手：</b>可提交记录，但必须经管理员审核通过后才正式生效；可撤回自己尚未审核的提交；可修改自己的账户密码。</li>
+        <li><b>管理员：</b>可录入、审核助手提交、管理助手账户；<b>删除与改分默认只能针对自己录入的记录</b>，且必须填写理由。所有者开启“管理员改分权限”后，管理员可改<b>自己录入或助手录入</b>的记录；<b>但无论何时，管理员都不能修改或删除所有者录入的记录。</b>管理员可修改自己的账户密码。<b>清空记录默认仅所有者可操作</b>，所有者可开启开关授权管理员清空（需密码授权）。</li>
+        <li><b>账户密码查看：</b>任何角色查看他人账户密码，都必须先输入当前登录账户的密码进行授权，且该操作会记入日志。</li>
+        <li><b>助手密码修改：</b>默认仅所有者可修改助手密码；所有者可开启开关，授权管理员修改助手密码。</li>
+        <li><b>自定义行为：</b>加分/扣分中自定义添加的行为项，可点击该项右上角 <b>✕</b> 删除（删除后不再出现在列表中，已记录的历史数据不受影响）。</li>
+        <li><b>清空日志：</b>清空管理员操作记录（仅所有者）与清空助手操作记录（管理员/所有者）均需输入本人密码授权，且会记入日志。</li>
+      </ul>
+      <p class="red-line"><b>三、严禁滥用权限红线</b></p>
+      <ol class="red-line">
+        <li>严禁利用权限伪造、篡改、删除、虚增或恶意扣减学生记录。</li>
+        <li>严禁因个人好恶、关系亲疏、打击报复等，对学生进行不公正加分或扣分。</li>
+        <li>严禁越权操作：管理员不得在未授权时改分，不得修改、删除他人录入记录；助手不得绕过审核直接生效。</li>
+        <li>严禁泄露、传播、出售学生信息、行为记录、导出文件、账户密码。</li>
+        <li>严禁共享账户、代登录、冒用他人身份操作。</li>
+        <li>严禁恶意清空、批量删除、篡改日志、绕过审核流程。</li>
+        <li>严禁将本系统用于商业、非法或与德育管理无关的用途。</li>
+        <li>发现漏洞、误操作、异常记录，应立即报告所有者或管理员，不得隐瞒或利用。</li>
+      </ol>
+      <p><b>四、操作留痕与审计</b><br>登录、退出、记录、审核、拒绝、撤回、删除、改分、导出、清空、账户管理、权限开关、修改密码等主要操作均会记录日志；改分必须<b>分别填写“修改内容”和“修改理由”</b>，删除必须填写理由。日志用于审计与追责，请勿尝试绕过或滥用。</p>
+      <p><b>五、数据安全与备份</b><br>本系统数据保存在本机浏览器 localStorage 中，不会自动上云或多端同步。清除浏览器数据、更换设备、使用隐私模式等可能导致数据丢失。请定期导出 Excel/TXT 备份。导出文件包含学生姓名与行为记录，属于敏感信息，须妥善保管，不得随意转发。</p>
+      <p><b>六、账户与密码</b><br>默认账户仅用于初始化，首次使用后应立即修改默认密码。管理员与助手可通过“修改密码”按钮自助修改自己的账户密码，修改成功后系统会显示一次新密码，请立即妥善保存。</p>
+      <p><b>七、责任与处理</b><br>使用者对本人账户下的所有操作负责。因滥用权限、泄露密码、误删误改、未备份等造成的后果，由操作者或责任人承担；涉及学生隐私、名誉或校规校纪的，按学校规定处理。</p>
+      <p><b>八、确认</b><br>登录前需勾选“我已阅读并同意《使用告知与权限规范》”，勾选并登录即表示已阅读、理解并同意遵守以上全部内容。不同意者请勿登录或操作。</p>
+      <div class="safe-box">✅ <b>正确使用建议：</b>记录前先核对周次、日期、学生与行为；改分、删除必须写明理由；定期导出备份；发现异常及时报告；离职或转岗时及时移交并删除本人账户。</div>
+      <div class="danger-box">⚠️ 权限不是特权。任何滥用权限的行为都会留下操作日志，并可能被追责。</div>
+      <div class="notice-foot">本告知与规范自发布之日起执行，最终解释权归系统所有者所有。</div>
+    </div>
+  </div>
+
+  <div class="role-bar">
+    <div class="role-info" id="roleInfo">
+      👤 当前身份：<span class="badge" id="roleBadge">访客</span>
+      <span id="adminHint" style="font-weight:normal;font-size:13px;color:#888;margin-left:10px;"></span>
+    </div>
+    <div class="role-actions" id="roleActions">
+      <button id="changeOwnPwdBtn" class="purple" style="display:none;" onclick="openChangeOwnPwd()">🔐 修改密码</button>
+      <button id="loginBtn" onclick="openLogin()">🔑 登录</button>
+      <button id="logoutBtn" class="outline" style="display:none;" onclick="logout()">退出</button>
+    </div>
+  </div>
+
+  <div class="guest-tip" id="guestTip">👀 您正在以 <b>访客</b> 身份浏览，仅可查看排行与记录列表。如需修改，请登录管理员、助手或所有者账号。</div>
+  <div class="helper-tip" id="helperTip" style="display:none;">✏️ 您正在以 <b>助手 (Helper)</b> 身份工作。您添加的记录将进入待审核列表，需管理员审核通过后才会正式生效。</div>
+
+  <div class="card owner-only" id="ownerPanel" style="display:none;">
+    <h3>👑 所有者控制台 (Owner)</h3>
+
+    <div class="owner-section" id="ownerSectionPerms">
+      <div class="owner-section-header" onclick="toggleOwnerSection('ownerSectionPerms')">
+        <span>⚙️ 权限开关</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="owner-section-body">
+        <div class="owner-panel">
+          <h4>⚙️ 管理员改分权限</h4>
+          <div class="field-row">
+            <label>允许管理员改分：</label>
+            <input type="checkbox" id="allowAdminEditToggle" onchange="toggleAdminEdit()">
+            <span class="switch-state" id="adminEditState">未开启</span>
+          </div>
+          <div class="switch-hint">
+            · 关闭时：管理员<b>不能</b>改分（默认）。<br>
+            · 开启时：管理员可修改<b>自己录入或助手录入</b>的记录，且必须分别填写“修改内容”和“修改理由”。<br>
+            · <b>无论是否开启，管理员都不能修改或删除所有者录入的记录。</b><br>
+            · 所有者不受此开关限制，可改任意记录，但同样需填写内容与理由。
+          </div>
+        </div>
+
+        <div class="owner-panel">
+          <h4>⚙️ 管理员修改助手密码权限</h4>
+          <div class="field-row">
+            <label>允许管理员改助手密码：</label>
+            <input type="checkbox" id="allowAdminHelperPwdToggle" onchange="toggleAdminHelperPwd()">
+            <span class="switch-state" id="adminHelperPwdState">未开启</span>
+          </div>
+          <div class="switch-hint">
+            · 关闭时：管理员<b>不能</b>修改助手账户密码（默认）。<br>
+            · 开启时：管理员可在“助手账户管理”面板中修改助手密码，操作会记入日志。<br>
+            · 所有者不受此开关限制，可随时修改任意助手密码。
+          </div>
+        </div>
+
+        <div class="owner-panel">
+          <h4>⚙️ 管理员清空记录权限</h4>
+          <div class="field-row">
+            <label>允许管理员清空记录：</label>
+            <input type="checkbox" id="allowAdminClearToggle" onchange="toggleAdminClear()">
+            <span class="switch-state" id="adminClearState">未开启</span>
+          </div>
+          <div class="switch-hint">
+            · 关闭时：管理员<b>不能</b>清空记录（默认），仅所有者可清空。<br>
+            · 开启时：管理员可清空记录，但<b>仍需输入本人密码授权</b>，且操作会记入日志。<br>
+            · 清空属于高危操作，请谨慎授权。
+          </div>
+        </div>
+
+        <div class="owner-panel">
+          <h4>⚙️ 管理员清空助手记录权限</h4>
+          <div class="field-row">
+            <label>允许管理员清空助手记录：</label>
+            <input type="checkbox" id="allowAdminClearHelperLogToggle" onchange="toggleAdminClearHelperLog()">
+            <span class="switch-state" id="adminClearHelperLogState">未开启</span>
+          </div>
+          <div class="switch-hint">
+            · 关闭时：管理员<b>不能</b>清空助手操作记录（默认），仅所有者可清空。<br>
+            · 开启时：管理员可清空助手操作记录，但<b>仍需输入本人密码授权</b>，且操作会记入日志。<br>
+            · 清空属于高危操作，请谨慎授权。
+          </div>
+        </div>
+
+        <div class="owner-panel">
+          <h4>⚙️ 管理员助手管理权限</h4>
+          <div class="field-row">
+            <label>允许管理员查看助手账户列表：</label>
+            <input type="checkbox" id="allowAdminViewHelperListToggle" onchange="toggleAdminViewHelperList()">
+            <span class="switch-state" id="adminViewHelperListState">未开启</span>
+          </div>
+          <div class="field-row">
+            <label>允许管理员查看助手操作日志：</label>
+            <input type="checkbox" id="allowAdminViewHelperLogToggle" onchange="toggleAdminViewHelperLog()">
+            <span class="switch-state" id="adminViewHelperLogState">未开启</span>
+          </div>
+          <div class="field-row">
+            <label>允许管理员添加助手账户：</label>
+            <input type="checkbox" id="allowAdminAddHelperToggle" onchange="toggleAdminAddHelper()">
+            <span class="switch-state" id="adminAddHelperState">未开启</span>
+          </div>
+          <div class="switch-hint">
+            · 关闭时：管理员<b>不能</b>查看助手账户列表、查看助手操作日志、添加助手账户（默认）。<br>
+            · 开启时：管理员可执行对应操作，但查看密码仍需本人密码授权，添加助手会记入日志。<br>
+            · 所有授权开关仅所有者可修改。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="owner-section" id="ownerSectionHelper">
+      <div class="owner-section-header" onclick="toggleOwnerSection('ownerSectionHelper')">
+        <span>🧑‍🏫 助手账户管理</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="owner-section-body">
+        <div class="owner-panel">
+          <h4>🧑‍🏫 助手账户列表（密码需输入本人密码授权后查看）</h4>
+          <div id="ownerHelperListContainer"></div>
+        </div>
+        <div class="owner-panel">
+          <h4>➕ 添加助手账户</h4>
+          <div class="field-row">
+            <label>账户名：</label>
+            <input type="text" id="newHelperUserOwner" placeholder="如：helper2">
+            <label>密码：</label>
+            <input type="text" id="newHelperPwdOwner" placeholder="密码">
+            <button onclick="addHelperAccountOwner()">添加助手</button>
+          </div>
+          <div class="switch-hint">
+            · 添加助手账户属于敏感操作，将记入操作日志。<br>
+            · 添加后请及时告知该助手，并提醒其尽快自行修改密码。
+          </div>
+        </div>
+        <div class="owner-panel">
+          <h4>🔐 修改指定助手密码</h4>
+          <div class="field-row">
+            <label>助手账户：</label>
+            <select id="passHelperSelectOwner"></select>
+            <label>新密码：</label>
+            <input type="text" id="newHelperPassOwner" placeholder="输入新密码">
+            <button onclick="changeHelperPassword('owner')">更新密码</button>
+          </div>
+          <div class="switch-hint">
+            · 修改助手密码属于敏感操作，将记入操作日志。<br>
+            · 修改后请及时告知该助手，并提醒其尽快自行修改。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="owner-section" id="ownerSectionAdmin">
+      <div class="owner-section-header" onclick="toggleOwnerSection('ownerSectionAdmin')">
+        <span>👤 管理员账户管理</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="owner-section-body">
+        <div class="owner-panel">
+          <h4>🔐 修改指定管理员密码</h4>
+          <div class="field-row">
+            <label>管理员账户：</label>
+            <select id="passAdminSelect"></select>
+            <label>新密码：</label>
+            <input type="text" id="newAdminPass" placeholder="输入新密码">
+            <button onclick="changeAdminPassword()">更新密码</button>
+          </div>
+        </div>
+        <div class="owner-panel">
+          <h4>➕ 添加管理员账户</h4>
+          <div class="field-row">
+            <label>账户名：</label>
+            <input type="text" id="newAdminUser" placeholder="如：teacher1">
+            <label>密码：</label>
+            <input type="text" id="newAdminPwd" placeholder="密码">
+            <button onclick="addAdminAccount()">添加账户</button>
+          </div>
+        </div>
+        <div class="owner-panel">
+          <h4>📋 管理员账户列表（密码需输入本人密码授权后查看）</h4>
+          <div id="adminListContainer"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="owner-section" id="ownerSectionLogs">
+      <div class="owner-section-header" onclick="toggleOwnerSection('ownerSectionLogs')">
+        <span>📜 操作记录</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="owner-section-body">
+        <div class="owner-panel">
+          <h4>📜 管理员操作记录
+            <button class="download-log-btn" onclick="downloadLogs('admin')" style="margin-left:auto;">⬇ 下载</button>
+          </h4>
+          <div class="log-list" id="logList"></div>
+          <div style="margin-top:8px;text-align:right;">
+            <button class="danger" onclick="clearLogs()" style="padding:5px 12px;font-size:13px;">清空记录</button>
+          </div>
+        </div>
+        <div class="owner-panel">
+          <h4>📜 助手操作记录
+            <button class="download-log-btn" onclick="downloadLogs('helper')" style="margin-left:auto;">⬇ 下载</button>
+          </h4>
+          <div class="helper-log-list" id="ownerHelperLogList"></div>
+          <div style="margin-top:8px;text-align:right;">
+            <button class="danger" onclick="ownerClearHelperLogs()" style="padding:5px 12px;font-size:13px;">清空助手记录</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card admin-only" id="adminHelperPanel" style="display:none;">
+    <h3>🧑‍🏫 助手账户管理</h3>
+
+    <div class="admin-panel" id="adminAddHelperPanel" style="display:none;">
+      <h4>➕ 添加助手账户</h4>
+      <div class="field-row">
+        <label>账户名：</label>
+        <input type="text" id="newHelperUser" placeholder="如：helper2">
+        <label>密码：</label>
+        <input type="text" id="newHelperPwd" placeholder="密码">
+        <button onclick="addHelperAccount()">添加助手</button>
+      </div>
+      <div style="font-size:13px;color:#1e8449;">· 添加助手账户需所有者授权，操作会记入日志。</div>
+    </div>
+    <div class="admin-panel" id="adminAddHelperDisabled" style="display:none;">
+      <h4>➕ 添加助手账户</h4>
+      <div class="perm-disabled-tip">🔒 所有者未开启“添加助手账户”权限，请联系所有者授权。</div>
+    </div>
+
+    <div class="admin-panel" id="adminHelperPwdPanel" style="display:none;">
+      <h4>🔐 修改助手密码（所有者已授权）</h4>
+      <div class="field-row">
+        <label>助手账户：</label>
+        <select id="passHelperSelectAdmin"></select>
+        <label>新密码：</label>
+        <input type="text" id="newHelperPassAdmin" placeholder="输入新密码">
+        <button onclick="changeHelperPassword('admin')">更新密码</button>
+      </div>
+      <div style="font-size:13px;color:#1e8449;line-height:1.6;">
+        · 该权限由所有者在控制台开启。修改助手密码将记入操作日志，请勿滥用。<br>
+        · 管理员<b>不能</b>修改管理员或所有者的密码。
+      </div>
+    </div>
+    <div class="admin-panel" id="adminHelperPwdDisabled" style="display:none;">
+      <h4>🔐 修改助手密码</h4>
+      <div class="perm-disabled-tip">🔒 所有者未开启“管理员修改助手密码”权限，请联系所有者授权。</div>
+    </div>
+
+    <div class="admin-panel" id="adminViewHelperListPanel" style="display:none;">
+      <h4>📋 助手账户列表（密码需输入本人密码授权后查看）</h4>
+      <div id="helperListContainer"></div>
+    </div>
+    <div class="admin-panel" id="adminViewHelperListDisabled" style="display:none;">
+      <h4>📋 助手账户列表</h4>
+      <div class="perm-disabled-tip">🔒 所有者未开启“查看助手账户列表”权限，请联系所有者授权。</div>
+    </div>
+
+    <div class="admin-panel" id="adminViewHelperLogPanel" style="display:none;">
+      <h4>📝 助手操作记录
+        <button class="download-log-btn" onclick="downloadLogs('helper')" style="margin-left:auto;">⬇ 下载</button>
+      </h4>
+      <div class="helper-log-list" id="helperLogList"></div>
+      <div style="margin-top:8px;text-align:right;">
+        <button class="danger" onclick="clearHelperLogs()" style="padding:5px 12px;font-size:13px;">清空助手记录</button>
+      </div>
+    </div>
+    <div class="admin-panel" id="adminViewHelperLogDisabled" style="display:none;">
+      <h4>📝 助手操作记录</h4>
+      <div class="perm-disabled-tip">🔒 所有者未开启“查看助手操作日志”权限，请联系所有者授权。</div>
+    </div>
+  </div>
+
+  <div class="card admin-only" id="adminReviewPanel" style="display:none;">
+    <h3>📋 待审核记录（助手提交）</h3>
+    <div id="pendingListContainer"><p style="color:#999;">暂无待审核记录</p></div>
+  </div>
+
+  <div class="card" id="helperMyPanel" style="display:none;">
+    <h3>📤 我的提交（可申请删除）</h3>
+    <div id="mySubmissionsContainer"><p style="color:#999;">暂无待审核的提交</p></div>
+  </div>
+
+  <div class="card helper-only">
+    <div class="top-bar">
+      <label>周次：</label>
+      <div class="week-wrap">
+        <span class="week-suffix">第</span>
+        <input type="number" id="weekInput" min="1" step="1" value="" placeholder="数字">
+        <span class="week-suffix">周</span>
+      </div>
+      <label>日期：</label>
+      <input type="date" id="dateInput">
+      <div class="type-switch">
+        <button id="btnBonus" class="active-bonus" onclick="setType('加')">加分</button>
+        <button id="btnDeduct" onclick="setType('扣')">扣分</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card helper-only">
+    <div class="current-bar" id="currentBar">请先选择学生和行为</div>
+  </div>
+
+  <div class="card helper-only">
+    <h3 id="behaviorTitle">加分项（点击选择）</h3>
+    <div class="behavior-grid" id="behaviorGrid"></div>
+    <div class="custom-behavior-area">
+      <label>✏️ 自定义：</label>
+      <input type="text" id="customName" class="behavior-name" placeholder="行为名称，如：主动整理书架">
+      <input type="number" id="customScore" class="behavior-score" placeholder="分值" min="1" step="1" value="1">
+      <button onclick="addCustomBehavior()">添加并使用</button>
+      <span class="hint">输入后点击添加，自动选中；不想要了可点该项右上角 <b>✕</b> 删除</span>
+    </div>
+  </div>
+
+  <div class="card helper-only">
+    <h3>学生（点击即记录）</h3>
+    <div class="student-grid" id="studentGrid"></div>
+  </div>
+
+  <div class="card helper-only">
+    <div class="toolbar">
+      <button class="success" onclick="exportExcel()">导出 Excel</button>
+      <button class="success" onclick="exportTxt()">导出 TXT</button>
+      <button class="gray" onclick="manualSave()">手动保存</button>
+      <button class="danger" onclick="clearAll()">清空记录</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="search-bar" id="searchBar">
+    <label>🔍 搜索记录：</label>
+    <input type="text" id="searchInput" placeholder="输入学生姓名或行为关键词…" autocomplete="off">
+    <button class="filter-btn" onclick="applySearch()">搜索</button>
+    <button class="filter-btn clear" onclick="clearSearch()">显示全部</button>
+    <span class="result-count" id="searchResultCount"></span>
+  </div>
+
+  <div class="card" id="recordListCard">
+    <h3>
+      <span>记录列表</span>
+      <span class="fold-toggle" id="recordListToggle" onclick="toggleFold('recordList')">收起</span>
+    </h3>
+    <div class="fold-content" id="recordListFold">
+      <div id="recordList"></div>
+    </div>
+  </div>
+
+  <div class="card" id="rankCard">
+    <h3>
+      <span>按学生汇总排名</span>
+      <span class="fold-toggle" id="rankToggle" onclick="toggleFold('rank')">收起</span>
+    </h3>
+    <div class="fold-content" id="rankFold">
+      <div id="rankTable"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="loginModal" style="display:none;">
+  <div class="modal-box">
+    <h3>🔐 登录</h3>
+    <div class="login-notice">⚠️ 严禁伪造、篡改、删除学生记录，严禁越权改分，严禁泄露学生信息与账户密码。<b>所有操作均会留痕并接受审计，滥用权限将被追责。</b></div>
+    <div class="err" id="loginErr"></div>
+    <label>账户</label>
+    <input type="text" id="loginUser" placeholder="请输入账户名" autocomplete="off">
+    <label>密码</label>
+    <input type="password" id="loginPass" placeholder="请输入密码" autocomplete="off">
+    <div id="captchaArea">
+      <label>验证码</label>
+      <div class="captcha-row">
+        <input type="text" id="captchaInput" placeholder="输入验证码" maxlength="4" autocomplete="off">
+        <div class="captcha-img" id="captchaImg" onclick="refreshCaptcha()"></div>
+      </div>
+    </div>
+    <label class="agree-row" id="agreeRow" for="agreeNotice">
+      <input type="checkbox" id="agreeNotice">
+      <span>我已阅读并同意 <b style="color:#c0392b;">《使用告知与权限规范》</b>，承诺不滥用权限、不伪造篡改记录、不泄露学生信息与账户密码。</span>
+    </label>
+    <div class="btn-row">
+      <button class="confirm" onclick="doLogin()">登录</button>
+      <button class="cancel" onclick="closeLogin()">取消</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="scoreModal" style="display:none;">
+  <div class="modal-box" style="width: 420px;">
+    <h3>✏️ 修改记录</h3>
+    <div class="err" id="scoreErr"></div>
+    <div style="font-size:13px;color:#666;background:#f5eef8;border:1px solid #d2b4de;border-radius:6px;padding:8px 10px;margin-bottom:14px;word-break:break-all;line-height:1.6;" id="scoreOrigin"></div>
+    <div class="score-field-group">
+      <div class="group-title">📌 修改内容（加分/扣分项）</div>
+      <label>新内容 <span style="color:#e74c3c;">*必填</span></label>
+      <input type="text" id="newBehaviorInput" placeholder="如：迟到、早退、上课说话…" maxlength="40" autocomplete="off">
+      <label>新分值</label>
+      <input type="number" id="newScoreValue" min="1" step="1">
+      <label>类型</label>
+      <select id="newScoreType">
+        <option value="加">加分</option>
+        <option value="扣">扣分</option>
+      </select>
+    </div>
+    <div class="score-field-group reason-group">
+      <div class="group-title">📝 修改理由（与内容分开记录）</div>
+      <label>请填写修改理由 <span style="color:#e74c3c;">*必填</span></label>
+      <input type="text" id="editReason" placeholder="如：录入错误、行为判断有误、学生申辩属实…" maxlength="80" autocomplete="off">
+    </div>
+    <div style="font-size:12px;color:#c0392b;background:#fff4f4;border-left:3px solid #e74c3c;border-radius:4px;padding:6px 9px;margin-bottom:12px;line-height:1.6;">
+      温馨提示：改分属于敏感操作，将记入操作日志。日志会分别记录「修改内容」「修改理由」「原录入人」「修改人」。<br>
+      管理员改分仅限自己或助手录入的记录，<b>不能修改所有者录入的记录</b>；请勿越权、徇私、打击报复或伪造记录。
+    </div>
+    <div class="btn-row">
+      <button class="confirm" onclick="confirmEditScore()">确定</button>
+      <button class="cancel" onclick="closeScoreModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="deleteModal" style="display:none;">
+  <div class="modal-box">
+    <h3>🗑️ 删除记录</h3>
+    <div class="err" id="deleteErr"></div>
+    <div style="font-size:13px;color:#666;background:#fff4f4;border:1px solid #f5c6cb;border-radius:6px;padding:8px 10px;margin-bottom:12px;word-break:break-all;line-height:1.6;" id="deleteOrigin"></div>
+    <label>删除理由 <span style="color:#e74c3c;">*必填</span></label>
+    <input type="text" id="deleteReason" placeholder="如：录入错误、重复记录…" maxlength="80" autocomplete="off">
+    <div style="font-size:12px;color:#c0392b;background:#fff4f4;border-left:3px solid #e74c3c;border-radius:4px;padding:6px 9px;margin-top:-6px;margin-bottom:12px;line-height:1.6;">
+      温馨提示：删除属于敏感操作，将记入操作日志。请确认理由正当，不得因个人好恶或打击报复而删除。
+    </div>
+    <div class="btn-row">
+      <button class="confirm" onclick="confirmDeleteRecord()">确定删除</button>
+      <button class="cancel" onclick="closeDeleteModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="changePwdModal" style="display:none;">
+  <div class="modal-box">
+    <h3>🔐 修改我的密码</h3>
+    <div class="err" id="changePwdErr"></div>
+    <div style="font-size:13px;color:#666;background:#eaf4fd;border:1px solid #b6d4fe;border-radius:6px;padding:8px 10px;margin-bottom:12px;line-height:1.6;">当前账户：<b id="changePwdUser">—</b></div>
+    <label>当前密码 <span style="color:#e74c3c;">*必填</span></label>
+    <input type="password" id="oldPwdInput" autocomplete="off" placeholder="请输入当前密码">
+    <label>新密码 <span style="color:#e74c3c;">*必填</span></label>
+    <input type="text" id="newPwdInput" autocomplete="off" placeholder="请输入新密码" maxlength="40">
+    <label>确认新密码 <span style="color:#e74c3c;">*必填</span></label>
+    <input type="text" id="newPwdInput2" autocomplete="off" placeholder="请再次输入新密码" maxlength="40">
+    <div style="font-size:12px;color:#c0392b;background:#fff4f4;border-left:3px solid #e74c3c;border-radius:4px;padding:6px 9px;margin-top:-6px;margin-bottom:12px;line-height:1.6;">
+      温馨提示：修改成功后系统会显示一次新密码，请立即妥善保存。修改密码将记入操作日志。
+    </div>
+    <div class="btn-row">
+      <button class="confirm" onclick="confirmChangeOwnPwd()">确定修改</button>
+      <button class="cancel" onclick="closeChangeOwnPwd()">取消</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="pwdShowModal" style="display:none;">
+  <div class="modal-box pwd-show-box" style="width: 360px;">
+    <h3>✅ 密码修改成功</h3>
+    <div class="pwd-show-user">账户：<b id="pwdShowUser">—</b></div>
+    <div>新密码如下：</div>
+    <span class="pwd-show-value" id="pwdShowValue">—</span>
+    <div class="pwd-show-warn">⚠️ 此密码仅显示一次，关闭后将不再自动展示。请立即用笔记或密码管理器保存。如忘记，请让所有者重置。</div>
+    <div class="btn-row"><button class="confirm" onclick="closePwdShow()">我已记住</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="authModal" style="display:none;">
+  <div class="modal-box" style="width: 380px;">
+    <h3>🔒 安全授权</h3>
+    <div class="err" id="authErr"></div>
+    <div style="font-size:13px;color:#8a6d3b;background:#fffbe6;border:1px solid #f0d58c;border-radius:6px;padding:10px 12px;margin-bottom:14px;line-height:1.7;" id="authMsg">—</div>
+    <label>请输入当前账户密码以授权 <span style="color:#e74c3c;">*必填</span></label>
+    <input type="password" id="authPwdInput" autocomplete="off" placeholder="请输入当前登录账户的密码">
+    <div style="font-size:12px;color:#c0392b;background:#fff4f4;border-left:3px solid #e74c3c;border-radius:4px;padding:6px 9px;margin-top:-6px;margin-bottom:12px;line-height:1.6;">
+      温馨提示：此操作属于敏感操作，需本人密码授权，且会记入操作日志。请勿泄露、传播他人密码。
+    </div>
+    <div class="btn-row">
+      <button class="confirm" onclick="confirmAuth()">确认授权</button>
+      <button class="cancel" onclick="closeAuthModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirmModal" style="display:none;">
+  <div class="modal-box" style="width: 360px;">
+    <h3 id="confirmTitle">确认操作</h3>
+    <div id="confirmMsg" style="font-size:14px;color:#555;text-align:center;margin-bottom:18px;word-break:break-all;line-height:1.6;white-space:pre-wrap;"></div>
+    <div class="btn-row">
+      <button class="confirm" id="confirmOkBtn">确定</button>
+      <button class="cancel" id="confirmCancelBtn">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ 学生名单 ============ */
+const students = {
+  1: "学生1",
+  2: "学生2",
+  3: "学生3",
+  4: "学生4",
+  5: "学生5",
+  6: "学生6",
+  7: "学生7",
+  8: "学生8",
+  9: "学生9",
+  10: "学生10",
+  11: "学生11",
+  12: "学生12",
+  13: "学生13",
+  14: "学生14",
+  15: "学生15",
+  16: "学生16",
+  17: "学生17",
+  18: "学生18",
+  19: "学生19",
+  20: "学生20",
+  21: "学生21",
+  22: "学生22",
+  23: "学生23",
+  24: "学生24",
+  25: "学生25",
+  26: "学生26",
+  27: "学生27",
+  28: "学生28",
+  29: "学生29",
+  30: "学生30",
+  31: "学生31",
+  32: "学生32",
+  33: "学生33",
+  34: "学生34",
+  35: "学生35",
+  36: "学生36",
+  37: "学生37",
+  38: "学生38",
+  39: "全班学生"
+};
+
+const deductionRules = [
+  ["迟到", 2], ["早退", 2], ["旷课", 3],
+  ["上课说话", 2], ["上课睡觉", 2], ["上课玩手机", 2],
+  ["上课吃东西", 2], ["看与课堂无关的书", 2], ["扰乱课堂秩序", 2],
+  ["顶撞老师", 5], ["不服从管理", 3], ["考试作弊", 10],
+  ["自习课讲话", 1], ["自习课随意走动", 2],
+  ["未交作业", 2], ["迟交作业", 2], ["作业抄袭", 3],
+  ["作业质量极差", 1], ["不带课本或学习资料", 2], ["不参加早读", 2],
+  ["不认真做眼保健操", 2], ["不认真做课间操", 2], ["考试交白卷", 3],
+  ["考试时睡觉", 2],
+  ["乱扔垃圾", 2], ["值日不认真", 2], ["逃避值日", 2],
+  ["桌面杂乱", 2], ["座位周围有垃圾", 2], ["破坏教室卫生", 2],
+  ["不参加大扫除", 2], ["浪费水资源", 1], ["浪费粮食", 2],
+  ["说脏话", 2], ["给同学起侮辱性外号", 3], ["嘲笑同学", 2],
+  ["打架", 10], ["骂人", 3], ["欺负同学", 5],
+  ["不尊重老师", 5], ["公共场合大声喧哗", 1], ["不穿校服", 1],
+  ["佩戴首饰", 1], ["发型不合格", 1],
+  ["追逐打闹", 2], ["攀爬栏杆", 5], ["带危险物品到校", 5],
+  ["损坏公物", 5], ["故意破坏公物", 10], ["违规使用电器", 3],
+  ["在教室充电", 2], ["翻越围墙", 10], ["吸烟", 10],
+  ["饮酒", 10],
+  ["升旗仪式缺席", 2], ["集会讲话", 2], ["跑操缺席", 2],
+  ["跑操不认真", 2], ["眼保健操不做", 2], ["课间操迟到", 2],
+  ["体育课无故缺席", 2], ["7S不规范", 2]
+];
+
+const bonusRules = [
+  ["上课表扬", 2], ["作业优秀", 2], ["考试进步", 2],
+  ["帮助同学", 2], ["拾金不昧", 2], ["劳动积极", 1],
+  ["遵守纪律", 2], ["主动回答问题", 2], ["竞赛获奖", 10],
+  ["为班级争光", 3], ["7S规范", 2]
+];
+
+const STORAGE_KEY = "student_records_v2";
+const PENDING_KEY = "student_pending_records_v1";
+const CUSTOM_BONUS_KEY = "student_custom_bonus_v1";
+const CUSTOM_DEDUCT_KEY = "student_custom_deduct_v1";
+const AUTH_KEY = "student_auth_v2";
+const ADMIN_ACCOUNTS_KEY = "student_admin_accounts_v1";
+const HELPER_ACCOUNTS_KEY = "student_helper_accounts_v1";
+const OPERATION_LOGS_KEY = "student_operation_logs_v1";
+const HELPER_LOGS_KEY = "student_helper_logs_v1";
+const OWNER_ACCOUNT_KEY = "student_owner_account_v1";
+const ALLOW_ADMIN_EDIT_KEY = "student_allow_admin_edit_v1";
+const ALLOW_ADMIN_HELPER_PWD_KEY = "student_allow_admin_helper_pwd_v1";
+const ALLOW_ADMIN_CLEAR_KEY = "student_allow_admin_clear_v1";
+const ALLOW_ADMIN_CLEAR_HELPER_LOG_KEY = "student_allow_admin_clear_helper_log_v1";
+const ALLOW_ADMIN_VIEW_HELPER_LIST_KEY = "student_allow_admin_view_helper_list_v1";
+const ALLOW_ADMIN_VIEW_HELPER_LOG_KEY = "student_allow_admin_view_helper_log_v1";
+const ALLOW_ADMIN_ADD_HELPER_KEY = "student_allow_admin_add_helper_v1";
+const NOTICE_COLLAPSE_KEY = "student_notice_collapse_v1";
+const RECORD_FOLD_KEY = "student_record_fold_v1";
+const RANK_FOLD_KEY = "student_rank_fold_v1";
+
+let records = [];
+let pendingRecords = [];
+let currentType = "加";
+let currentBehavior = null;
+let currentStudentId = null;
+
+let isAdmin = false;
+let isOwner = false;
+let isHelper = false;
+let currentUser = null;
+
+let adminAccounts = [];
+let helperAccounts = [];
+let ownerAccount = { user: "Owner", pass: "" };
+
+let operationLogs = [];
+let helperLogs = [];
+let captchaCode = "";
+
+let allowAdminEdit = false;
+let allowAdminHelperPwd = false;
+let allowAdminClear = false;
+let allowAdminClearHelperLog = false;
+let allowAdminViewHelperList = false;
+let allowAdminViewHelperLog = false;
+let allowAdminAddHelper = false;
+
+let lastSubmitKey = "";
+let lastSubmitTime = 0;
+
+let customBonusRules = [];
+let customDeductRules = [];
+
+let searchKeyword = "";
+
+/* ============ 真实角色校验 + 内存 token 映射 ============ */
+let sessionMap = {};
+
+function generateToken() {
+  const arr = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(arr).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function getRealSession() {
+  try {
+    const raw = sessionStorage.getItem(AUTH_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.token) return null;
+    return sessionMap[parsed.token] || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function getRealRole() {
+  const s = getRealSession();
+  if (!s) return "guest";
+  if (s.role === "owner") {
+    if (s.user !== ownerAccount.user) return "guest";
+    return "owner";
+  }
+  if (s.role === "admin") {
+    const acc = adminAccounts.find(a => a.user === s.user);
+    return acc ? "admin" : "guest";
+  }
+  if (s.role === "helper") {
+    const h = helperAccounts.find(a => a.user === s.user);
+    return h ? "helper" : "guest";
+  }
+  return "guest";
+}
+
+function requireRole(allowed) {
+  const real = getRealRole();
+  if (!allowed.includes(real)) {
+    showToast("⚠️ 无权限执行此操作");
+    try { addLog("越权尝试被拒绝", `尝试执行：${allowed.join("/")}，真实角色：${real}`); } catch (e) {}
+    return false;
+  }
+  return true;
+}
+
+function writeSession(role, user) {
+  const token = generateToken();
+  sessionMap[token] = { role, user };
+  sessionStorage.setItem(AUTH_KEY, JSON.stringify({ token }));
+}
+
+function clearSession() {
+  try {
+    const raw = sessionStorage.getItem(AUTH_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.token) delete sessionMap[parsed.token];
+    }
+  } catch (e) {}
+  sessionStorage.removeItem(AUTH_KEY);
+}
+
+/* ============ 实时读取权限开关 ============ */
+function getAllowAdminEdit() { try { return localStorage.getItem(ALLOW_ADMIN_EDIT_KEY) === "true"; } catch(e) { return false; } }
+function getAllowAdminHelperPwd() { try { return localStorage.getItem(ALLOW_ADMIN_HELPER_PWD_KEY) === "true"; } catch(e) { return false; } }
+function getAllowAdminClear() { try { return localStorage.getItem(ALLOW_ADMIN_CLEAR_KEY) === "true"; } catch(e) { return false; } }
+function getAllowAdminClearHelperLog() { try { return localStorage.getItem(ALLOW_ADMIN_CLEAR_HELPER_LOG_KEY) === "true"; } catch(e) { return false; } }
+function getAllowAdminViewHelperList() { try { return localStorage.getItem(ALLOW_ADMIN_VIEW_HELPER_LIST_KEY) === "true"; } catch(e) { return false; } }
+function getAllowAdminViewHelperLog() { try { return localStorage.getItem(ALLOW_ADMIN_VIEW_HELPER_LOG_KEY) === "true"; } catch(e) { return false; } }
+function getAllowAdminAddHelper() { try { return localStorage.getItem(ALLOW_ADMIN_ADD_HELPER_KEY) === "true"; } catch(e) { return false; } }
+
+/* ============ 加密模块 ============ */
+const CRYPTO_SECRET = "student-record-system-secret-v1";
+async function getCryptoKey() {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(CRYPTO_SECRET), { name: "PBKDF2" }, false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: enc.encode("student-record-salt-v1"), iterations: 100000, hash: "SHA-256" },
+    keyMaterial, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
+  );
+}
+async function encryptPassword(plain) {
+  const key = await getCryptoKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder();
+  const cipherBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, enc.encode(plain));
+  const cipherArray = new Uint8Array(cipherBuffer);
+  const combined = new Uint8Array(iv.length + cipherArray.length);
+  combined.set(iv, 0);
+  combined.set(cipherArray, iv.length);
+  return "enc:" + btoa(String.fromCharCode(...combined));
+}
+async function decryptPassword(stored) {
+  if (!stored) return "";
+  if (!stored.startsWith("enc:")) {
+    if (stored.includes(":") && !stored.startsWith("enc:")) return "";
+    return stored;
+  }
+  try {
+    const key = await getCryptoKey();
+    const raw = atob(stored.slice(4));
+    const combined = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) combined[i] = raw.charCodeAt(i);
+    const iv = combined.slice(0, 12);
+    const cipher = combined.slice(12);
+    const plainBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
+    return new TextDecoder().decode(plainBuffer);
+  } catch (e) {
+    console.warn("解密失败", e);
+    return "";
+  }
+}
+
+/* ============ Toast ============ */
+const toastEl = document.getElementById("toast");
+let toastTimer = null;
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1800);
+}
+const statusEl = document.getElementById("status");
+function showStatus(msg) {
+  statusEl.textContent = msg;
+  setTimeout(() => { statusEl.textContent = ""; }, 2000);
+}
+
+/* ============ 告知折叠 / 记录折叠 ============ */
+function toggleNotice() {
+  const card = document.getElementById("noticeCard");
+  const btn = document.getElementById("noticeToggle");
+  if (!card || !btn) return;
+  const collapsed = card.classList.toggle("notice-collapsed");
+  btn.textContent = collapsed ? "展开" : "收起";
+  try { localStorage.setItem(NOTICE_COLLAPSE_KEY, collapsed ? "1" : "0"); } catch (e) {}
+}
+function loadNoticeState() {
+  try {
+    const v = localStorage.getItem(NOTICE_COLLAPSE_KEY);
+    if (v === "1") {
+      const card = document.getElementById("noticeCard");
+      const btn = document.getElementById("noticeToggle");
+      if (card) card.classList.add("notice-collapsed");
+      if (btn) btn.textContent = "展开";
+    }
+  } catch (e) {}
+}
+function toggleFold(which) {
+  const contentEl = document.getElementById(which === 'recordList' ? 'recordListFold' : 'rankFold');
+  const toggleEl = document.getElementById(which === 'recordList' ? 'recordListToggle' : 'rankToggle');
+  if (!contentEl || !toggleEl) return;
+  const isHidden = contentEl.style.display === 'none';
+  contentEl.style.display = isHidden ? 'block' : 'none';
+  toggleEl.textContent = isHidden ? '收起' : '展开';
+  const key = which === 'recordList' ? RECORD_FOLD_KEY : RANK_FOLD_KEY;
+  try { localStorage.setItem(key, isHidden ? '0' : '1'); } catch (e) {}
+}
+function loadFoldState() {
+  try {
+    const rv = localStorage.getItem(RECORD_FOLD_KEY);
+    if (rv === '1') {
+      document.getElementById('recordListFold').style.display = 'none';
+      document.getElementById('recordListToggle').textContent = '展开';
+    }
+  } catch (e) {}
+  try {
+    const rv = localStorage.getItem(RANK_FOLD_KEY);
+    if (rv === '1') {
+      document.getElementById('rankFold').style.display = 'none';
+      document.getElementById('rankToggle').textContent = '展开';
+    }
+  } catch (e) {}
+}
+
+/* ============ 所有者面板折叠 ============ */
+function toggleOwnerSection(sectionId) {
+  const section = document.getElementById(sectionId);
+  if (!section) return;
+  const header = section.querySelector('.owner-section-header');
+  const body = section.querySelector('.owner-section-body');
+  if (!header || !body) return;
+  const isCollapsed = body.classList.toggle('collapsed');
+  header.classList.toggle('collapsed', isCollapsed);
+  try {
+    const key = 'ownerSection_' + sectionId;
+    localStorage.setItem(key, isCollapsed ? 'collapsed' : 'expanded');
+  } catch (e) {}
+}
+function loadOwnerSectionState() {
+  const ids = ['ownerSectionPerms', 'ownerSectionHelper', 'ownerSectionAdmin', 'ownerSectionLogs'];
+  ids.forEach(id => {
+    try {
+      const key = 'ownerSection_' + id;
+      const state = localStorage.getItem(key);
+      if (state === 'collapsed') {
+        const section = document.getElementById(id);
+        if (section) {
+          const header = section.querySelector('.owner-section-header');
+          const body = section.querySelector('.owner-section-body');
+          if (header && body) {
+            body.classList.add('collapsed');
+            header.classList.add('collapsed');
+          }
+        }
+      }
+    } catch (e) {}
+  });
+}
+
+/* ============ 下载日志 ============ */
+function downloadLogs(type) {
+  if (!isAdmin && !isOwner) { showToast('⚠️ 无权限下载日志'); return; }
+  if (type === 'helper' && isAdmin && !isOwner && !getAllowAdminViewHelperLog()) {
+    showToast('⚠️ 所有者未开启管理员查看助手日志权限'); return;
+  }
+  let content = '';
+  let filename = '';
+  const now = new Date();
+  const ts = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') +
+    String(now.getDate()).padStart(2,'0') + '_' +
+    String(now.getHours()).padStart(2,'0') +
+    String(now.getMinutes()).padStart(2,'0') +
+    String(now.getSeconds()).padStart(2,'0');
+  if (type === 'admin') {
+    if (operationLogs.length === 0) { showToast('⚠️ 暂无管理员操作记录'); return; }
+    content = operationLogs.map(l => `[${l.time}] [${l.user}] ${l.action}\n${l.detail || ''}\n${'─'.repeat(40)}`).join('\n');
+    filename = `管理员操作记录_${ts}.txt`;
+    addLog('下载管理员日志', `共 ${operationLogs.length} 条`);
+  } else if (type === 'helper') {
+    if (helperLogs.length === 0) { showToast('⚠️ 暂无助手操作记录'); return; }
+    content = helperLogs.map(l => `[${l.time}] [${l.user}] ${l.action}\n${l.detail || ''}\n${'─'.repeat(40)}`).join('\n');
+    filename = `助手操作记录_${ts}.txt`;
+    addLog('下载助手日志', `共 ${helperLogs.length} 条`);
+  }
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+  showToast('📥 日志已下载');
+}
+
+/* ============ 自定义确认弹窗 ============ */
+function showConfirm(msg, onOk, title) {
+  const modal = document.getElementById("confirmModal");
+  document.getElementById("confirmTitle").textContent = title || "确认操作";
+  document.getElementById("confirmMsg").textContent = msg;
+  const okBtn = document.getElementById("confirmOkBtn");
+  const cancelBtn = document.getElementById("confirmCancelBtn");
+  const newOk = okBtn.cloneNode(true);
+  const newCancel = cancelBtn.cloneNode(true);
+  okBtn.parentNode.replaceChild(newOk, okBtn);
+  cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+  newOk.onclick = () => { modal.style.display = "none"; if (typeof onOk === "function") onOk(); };
+  newCancel.onclick = () => { modal.style.display = "none"; };
+  modal.style.display = "flex";
+}
+
+/* ============ HTML 转义 ============ */
+function escapeHtml(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+/* ============ 记录 ID 工具 ============ */
+function findRecordById(id) {
+  if (id === undefined || id === null) return undefined;
+  return records.find(r => String(r.id) === String(id));
+}
+function findRecordIndexById(id) {
+  if (id === undefined || id === null) return -1;
+  return records.findIndex(r => String(r.id) === String(id));
+}
+
+/* ============ 安全授权 ============ */
+let authCallback = null;
+let authPurposeText = "";
+function requestAuth(purpose, cb) {
+  if (!isOwner && !isAdmin && !isHelper) { showToast("⚠️ 请先登录后再操作"); return; }
+  authCallback = cb;
+  authPurposeText = purpose || "敏感操作";
+  document.getElementById("authMsg").textContent = "即将执行：" + authPurposeText + "\n为确保安全，请输入当前登录账户的密码完成授权。";
+  document.getElementById("authPwdInput").value = "";
+  document.getElementById("authErr").textContent = "";
+  document.getElementById("authModal").style.display = "flex";
+  setTimeout(() => { const el = document.getElementById("authPwdInput"); if (el) el.focus(); }, 60);
+}
+function closeAuthModal() {
+  document.getElementById("authModal").style.display = "none";
+  document.getElementById("authPwdInput").value = "";
+  document.getElementById("authErr").textContent = "";
+  authCallback = null;
+}
+async function verifyCurrentUserPassword(pwd) {
+  if (!pwd) return false;
+  if (isOwner) { const plain = await decryptPassword(ownerAccount.pass); return plain === pwd; }
+  if (isAdmin) { const a = adminAccounts.find(x => x.user === currentUser); if (!a) return false; const plain = await decryptPassword(a.pass); return plain === pwd; }
+  if (isHelper) { const h = helperAccounts.find(x => x.user === currentUser); if (!h) return false; const plain = await decryptPassword(h.pass); return plain === pwd; }
+  return false;
+}
+async function confirmAuth() {
+  const errEl = document.getElementById("authErr");
+  const pwd = document.getElementById("authPwdInput").value;
+  if (!pwd) { errEl.textContent = "❌ 请输入密码"; return; }
+  if (!(await verifyCurrentUserPassword(pwd))) {
+    errEl.textContent = "❌ 密码错误，授权失败";
+    document.getElementById("authPwdInput").value = "";
+    document.getElementById("authPwdInput").focus();
+    addLog("授权失败", `${authPurposeText}：密码校验未通过`);
+    return;
+  }
+  const cb = authCallback;
+  document.getElementById("authModal").style.display = "none";
+  document.getElementById("authPwdInput").value = "";
+  document.getElementById("authErr").textContent = "";
+  authCallback = null;
+  addLog("授权成功", authPurposeText);
+  if (typeof cb === "function") cb();
+}
+
+/* ============ 查看密码 ============ */
+async function viewPassword(role, idx) {
+  if (!requireRole(["admin","owner"])) return;
+  const realRole = getRealRole();
+  if (role === "helper" && realRole === "admin" && !getAllowAdminViewHelperList()) {
+    showToast("⚠️ 所有者未开启管理员查看助手账户列表权限");
+    addLog("越权尝试被拒绝", "尝试查看助手密码");
+    return;
+  }
+  const arr = (role === "admin") ? adminAccounts : helperAccounts;
+  const acc = arr[idx];
+  if (!acc) { showToast("⚠️ 账户不存在"); return; }
+  const roleName = (role === "admin") ? "管理员" : "助手";
+  requestAuth(`查看${roleName}账户「${acc.user}」的密码`, async () => {
+    const el = document.getElementById(`pwd-${role}-${idx}`);
+    if (!el) return;
+    const plain = await decryptPassword(acc.pass);
+    if (!plain) { el.textContent = "⚠️ 无法解密（旧数据）"; el.style.color = "#e67e22"; }
+    else { el.textContent = plain; el.classList.add("revealed"); el.style.color = "#c0392b"; }
+    addLog("查看密码", `${roleName}账户：${acc.user}（已通过密码授权）`);
+    showToast("🔓 已授权显示密码，请勿外传");
+  });
+}
+
+/* ============ 权限开关 ============ */
+function loadAllowAdminEdit() { try { allowAdminEdit = (localStorage.getItem(ALLOW_ADMIN_EDIT_KEY) === "true"); } catch (e) { allowAdminEdit = false; } }
+function saveAllowAdminEdit() { try { localStorage.setItem(ALLOW_ADMIN_EDIT_KEY, allowAdminEdit ? "true" : "false"); } catch (e) {} }
+function toggleAdminEdit() {
+  if (!requireRole(["owner"])) return;
+  const cb = document.getElementById("allowAdminEditToggle");
+  allowAdminEdit = !!cb.checked;
+  saveAllowAdminEdit(); renderAdminEditState(); renderRecords();
+  addLog("权限设置", `管理员改分权限：${allowAdminEdit ? "开启" : "关闭"}`);
+  showToast(`✅ 已${allowAdminEdit ? "开启" : "关闭"}管理员改分权限`);
+}
+function renderAdminEditState() {
+  const toggle = document.getElementById("allowAdminEditToggle");
+  const stateEl = document.getElementById("adminEditState");
+  if (toggle) toggle.checked = allowAdminEdit;
+  if (stateEl) { stateEl.textContent = allowAdminEdit ? "已开启" : "未开启"; stateEl.className = "switch-state " + (allowAdminEdit ? "on" : "off"); }
+}
+
+function loadAllowAdminHelperPwd() { try { allowAdminHelperPwd = (localStorage.getItem(ALLOW_ADMIN_HELPER_PWD_KEY) === "true"); } catch (e) { allowAdminHelperPwd = false; } }
+function saveAllowAdminHelperPwd() { try { localStorage.setItem(ALLOW_ADMIN_HELPER_PWD_KEY, allowAdminHelperPwd ? "true" : "false"); } catch (e) {} }
+function toggleAdminHelperPwd() {
+  if (!requireRole(["owner"])) return;
+  const cb = document.getElementById("allowAdminHelperPwdToggle");
+  allowAdminHelperPwd = !!cb.checked;
+  saveAllowAdminHelperPwd(); renderAdminHelperPwdState();
+  addLog("权限设置", `管理员修改助手密码权限：${allowAdminHelperPwd ? "开启" : "关闭"}`);
+  showToast(`✅ 已${allowAdminHelperPwd ? "开启" : "关闭"}管理员修改助手密码权限`);
+  if (isAdmin) applyRoleUI();
+}
+function renderAdminHelperPwdState() {
+  const toggle = document.getElementById("allowAdminHelperPwdToggle");
+  const stateEl = document.getElementById("adminHelperPwdState");
+  if (toggle) toggle.checked = allowAdminHelperPwd;
+  if (stateEl) { stateEl.textContent = allowAdminHelperPwd ? "已开启" : "未开启"; stateEl.className = "switch-state " + (allowAdminHelperPwd ? "on" : "off"); }
+}
+
+function loadAllowAdminClear() { try { allowAdminClear = (localStorage.getItem(ALLOW_ADMIN_CLEAR_KEY) === "true"); } catch (e) { allowAdminClear = false; } }
+function saveAllowAdminClear() { try { localStorage.setItem(ALLOW_ADMIN_CLEAR_KEY, allowAdminClear ? "true" : "false"); } catch (e) {} }
+function toggleAdminClear() {
+  if (!requireRole(["owner"])) return;
+  const cb = document.getElementById("allowAdminClearToggle");
+  allowAdminClear = !!cb.checked;
+  saveAllowAdminClear(); renderAdminClearState();
+  addLog("权限设置", `管理员清空记录权限：${allowAdminClear ? "开启" : "关闭"}`);
+  showToast(`✅ 已${allowAdminClear ? "开启" : "关闭"}管理员清空记录权限`);
+}
+function renderAdminClearState() {
+  const toggle = document.getElementById("allowAdminClearToggle");
+  const stateEl = document.getElementById("adminClearState");
+  if (toggle) toggle.checked = allowAdminClear;
+  if (stateEl) { stateEl.textContent = allowAdminClear ? "已开启" : "未开启"; stateEl.className = "switch-state " + (allowAdminClear ? "on" : "off"); }
+}
+
+function loadAllowAdminClearHelperLog() { try { allowAdminClearHelperLog = (localStorage.getItem(ALLOW_ADMIN_CLEAR_HELPER_LOG_KEY) === "true"); } catch (e) { allowAdminClearHelperLog = false; } }
+function saveAllowAdminClearHelperLog() { try { localStorage.setItem(ALLOW_ADMIN_CLEAR_HELPER_LOG_KEY, allowAdminClearHelperLog ? "true" : "false"); } catch (e) {} }
+function toggleAdminClearHelperLog() {
+  if (!requireRole(["owner"])) return;
+  const cb = document.getElementById("allowAdminClearHelperLogToggle");
+  allowAdminClearHelperLog = !!cb.checked;
+  saveAllowAdminClearHelperLog(); renderAdminClearHelperLogState();
+  addLog("权限设置", `管理员清空助手记录权限：${allowAdminClearHelperLog ? "开启" : "关闭"}`);
+  showToast(`✅ 已${allowAdminClearHelperLog ? "开启" : "关闭"}管理员清空助手记录权限`);
+}
+function renderAdminClearHelperLogState() {
+  const toggle = document.getElementById("allowAdminClearHelperLogToggle");
+  const stateEl = document.getElementById("adminClearHelperLogState");
+  if (toggle) toggle.checked = allowAdminClearHelperLog;
+  if (stateEl) { stateEl.textContent = allowAdminClearHelperLog ? "已开启" : "未开启"; stateEl.className = "switch-state " + (allowAdminClearHelperLog ? "on" : "off"); }
+}
+
+function loadAllowAdminViewHelperList() { try { allowAdminViewHelperList = (localStorage.getItem(ALLOW_ADMIN_VIEW_HELPER_LIST_KEY) === "true"); } catch (e) { allowAdminViewHelperList = false; } }
+function saveAllowAdminViewHelperList() { try { localStorage.setItem(ALLOW_ADMIN_VIEW_HELPER_LIST_KEY, allowAdminViewHelperList ? "true" : "false"); } catch (e) {} }
+function toggleAdminViewHelperList() {
+  if (!requireRole(["owner"])) return;
+  const cb = document.getElementById("allowAdminViewHelperListToggle");
+  allowAdminViewHelperList = !!cb.checked;
+  saveAllowAdminViewHelperList(); renderAdminViewHelperListState();
+  addLog("权限设置", `管理员查看助手账户列表权限：${allowAdminViewHelperList ? "开启" : "关闭"}`);
+  showToast(`✅ 已${allowAdminViewHelperList ? "开启" : "关闭"}管理员查看助手账户列表权限`);
+  if (isAdmin) applyRoleUI();
+}
+function renderAdminViewHelperListState() {
+  const toggle = document.getElementById("allowAdminViewHelperListToggle");
+  const stateEl = document.getElementById("adminViewHelperListState");
+  if (toggle) toggle.checked = allowAdminViewHelperList;
+  if (stateEl) { stateEl.textContent = allowAdminViewHelperList ? "已开启" : "未开启"; stateEl.className = "switch-state " + (allowAdminViewHelperList ? "on" : "off"); }
+}
+
+function loadAllowAdminViewHelperLog() { try { allowAdminViewHelperLog = (localStorage.getItem(ALLOW_ADMIN_VIEW_HELPER_LOG_KEY) === "true"); } catch (e) { allowAdminViewHelperLog = false; } }
+function saveAllowAdminViewHelperLog() { try { localStorage.setItem(ALLOW_ADMIN_VIEW_HELPER_LOG_KEY, allowAdminViewHelperLog ? "true" : "false"); } catch (e) {} }
+function toggleAdminViewHelperLog() {
+  if (!requireRole(["owner"])) return;
+  const cb = document.getElementById("allowAdminViewHelperLogToggle");
+  allowAdminViewHelperLog = !!cb.checked;
+  saveAllowAdminViewHelperLog(); renderAdminViewHelperLogState();
+  addLog("权限设置", `管理员查看助手操作日志权限：${allowAdminViewHelperLog ? "开启" : "关闭"}`);
+  showToast(`✅ 已${allowAdminViewHelperLog ? "开启" : "关闭"}管理员查看助手操作日志权限`);
+  if (isAdmin) applyRoleUI();
+}
+function renderAdminViewHelperLogState() {
+  const toggle = document.getElementById("allowAdminViewHelperLogToggle");
+  const stateEl = document.getElementById("adminViewHelperLogState");
+  if (toggle) toggle.checked = allowAdminViewHelperLog;
+  if (stateEl) { stateEl.textContent = allowAdminViewHelperLog ? "已开启" : "未开启"; stateEl.className = "switch-state " + (allowAdminViewHelperLog ? "on" : "off"); }
+}
+
+function loadAllowAdminAddHelper() { try { allowAdminAddHelper = (localStorage.getItem(ALLOW_ADMIN_ADD_HELPER_KEY) === "true"); } catch (e) { allowAdminAddHelper = false; } }
+function saveAllowAdminAddHelper() { try { localStorage.setItem(ALLOW_ADMIN_ADD_HELPER_KEY, allowAdminAddHelper ? "true" : "false"); } catch (e) {} }
+function toggleAdminAddHelper() {
+  if (!requireRole(["owner"])) return;
+  const cb = document.getElementById("allowAdminAddHelperToggle");
+  allowAdminAddHelper = !!cb.checked;
+  saveAllowAdminAddHelper(); renderAdminAddHelperState();
+  addLog("权限设置", `管理员添加助手账户权限：${allowAdminAddHelper ? "开启" : "关闭"}`);
+  showToast(`✅ 已${allowAdminAddHelper ? "开启" : "关闭"}管理员添加助手账户权限`);
+  if (isAdmin) applyRoleUI();
+}
+function renderAdminAddHelperState() {
+  const toggle = document.getElementById("allowAdminAddHelperToggle");
+  const stateEl = document.getElementById("adminAddHelperState");
+  if (toggle) toggle.checked = allowAdminAddHelper;
+  if (stateEl) { stateEl.textContent = allowAdminAddHelper ? "已开启" : "未开启"; stateEl.className = "switch-state " + (allowAdminAddHelper ? "on" : "off"); }
+}
+
+/* ============ 操作日志 ============ */
+function addLog(action, detail) {
+  const now = new Date();
+  const time = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0") + " " + String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0") + ":" + String(now.getSeconds()).padStart(2,"0");
+  operationLogs.unshift({ time, user: currentUser || "未知", action, detail });
+  if (operationLogs.length > 200) operationLogs = operationLogs.slice(0, 200);
+  saveLogs(); renderLogs();
+}
+function saveLogs() { try { localStorage.setItem(OPERATION_LOGS_KEY, JSON.stringify(operationLogs)); } catch(e) {} }
+function loadLogs() { try { const d = localStorage.getItem(OPERATION_LOGS_KEY); if (d) operationLogs = JSON.parse(d); } catch(e) { operationLogs = []; } }
+function renderLogs() {
+  const box = document.getElementById("logList");
+  if (!box) return;
+  if (operationLogs.length === 0) { box.innerHTML = "<p style='color:#999;'>暂无操作记录</p>"; return; }
+  box.innerHTML = operationLogs.map(l => {
+    const rawDetail = String(l.detail || "");
+    let detailHtml = "";
+    if (rawDetail.includes("\n")) {
+      const lines = rawDetail.split("\n").filter(Boolean);
+      detailHtml = lines.map(line => {
+        if (line.startsWith("理由：")) return `<span class="log-line log-line-reason">📝 ${escapeHtml(line)}</span>`;
+        if (line.startsWith("内容：") || line.startsWith("内容变化：")) return `<span class="log-line log-line-content">✏️ ${escapeHtml(line)}</span>`;
+        if (line.startsWith("分值：") || line.startsWith("分值变化：")) return `<span class="log-line log-line-score">🔢 ${escapeHtml(line)}</span>`;
+        return `<span class="log-line">${escapeHtml(line)}</span>`;
+      }).join("");
+    } else {
+      let detail = escapeHtml(rawDetail);
+      let reasonHtml = "";
+      const idx = detail.indexOf("理由：");
+      if (idx >= 0) { const reason = detail.slice(idx + 3); detail = detail.slice(0, idx); reasonHtml = `<span class="log-line log-line-reason">📝 理由：${reason}</span>`; }
+      detailHtml = (detail ? `<span class="log-line">${detail}</span>` : "") + reasonHtml;
+    }
+    return `<div class="log-item"><div class="log-head"><span class="log-time">${escapeHtml(l.time)}</span>[${escapeHtml(l.user)}] <b>${escapeHtml(l.action)}</b></div>${detailHtml}</div>`;
+  }).join("");
+}
+function clearLogs() {
+  if (!requireRole(["owner"])) return;
+  showConfirm("确定清空所有管理员操作记录吗？清空后无法追溯，请确认已完成必要的审计与备份。", () => {
+    requestAuth("清空管理员操作记录（高危操作）", () => {
+      const count = operationLogs.length;
+      operationLogs = []; saveLogs(); renderLogs();
+      addLog("清空管理员操作记录", `共清空 ${count} 条记录（已通过密码授权）`);
+      showToast("✅ 管理员操作记录已清空（操作已记入日志）");
+    });
+  }, "清空管理员操作记录（需密码授权）");
+}
+
+/* ============ 助手操作日志 ============ */
+function addHelperLog(action, detail) {
+  const now = new Date();
+  const time = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0") + " " + String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0") + ":" + String(now.getSeconds()).padStart(2,"0");
+  helperLogs.unshift({ time, user: currentUser || "未知", action, detail });
+  if (helperLogs.length > 200) helperLogs = helperLogs.slice(0, 200);
+  saveHelperLogs(); renderHelperLogs();
+}
+function saveHelperLogs() { try { localStorage.setItem(HELPER_LOGS_KEY, JSON.stringify(helperLogs)); } catch(e) {} }
+function loadHelperLogs() { try { const d = localStorage.getItem(HELPER_LOGS_KEY); if (d) helperLogs = JSON.parse(d); } catch(e) { helperLogs = []; } }
+function renderHelperLogs() {
+  const box = document.getElementById("helperLogList");
+  if (box) {
+    if (helperLogs.length === 0) { box.innerHTML = "<p style='color:#999;'>暂无助手操作记录</p>"; }
+    else {
+      box.innerHTML = helperLogs.map(l => {
+        const rawDetail = String(l.detail || "");
+        let detailHtml = "";
+        if (rawDetail.includes("\n")) {
+          detailHtml = rawDetail.split("\n").filter(Boolean).map(line => `<span class="log-line">${escapeHtml(line)}</span>`).join("");
+        } else { detailHtml = rawDetail ? `<span class="log-line">${escapeHtml(rawDetail)}</span>` : ""; }
+        return `<div class="helper-log-item"><div class="log-head"><span class="log-time">${escapeHtml(l.time)}</span>[${escapeHtml(l.user)}] <b>${escapeHtml(l.action)}</b></div>${detailHtml}</div>`;
+      }).join("");
+    }
+  }
+  const ownerBox = document.getElementById("ownerHelperLogList");
+  if (ownerBox) {
+    if (helperLogs.length === 0) { ownerBox.innerHTML = "<p style='color:#999;'>暂无助手操作记录</p>"; }
+    else {
+      ownerBox.innerHTML = helperLogs.map(l => {
+        const rawDetail = String(l.detail || "");
+        let detailHtml = "";
+        if (rawDetail.includes("\n")) {
+          detailHtml = rawDetail.split("\n").filter(Boolean).map(line => `<span class="log-line">${escapeHtml(line)}</span>`).join("");
+        } else { detailHtml = rawDetail ? `<span class="log-line">${escapeHtml(rawDetail)}</span>` : ""; }
+        return `<div class="helper-log-item"><div class="log-head"><span class="log-time">${escapeHtml(l.time)}</span>[${escapeHtml(l.user)}] <b>${escapeHtml(l.action)}</b></div>${detailHtml}</div>`;
+      }).join("");
+    }
+  }
+}
+function clearHelperLogs() {
+  const realRole = getRealRole();
+  if (realRole !== "admin" && realRole !== "owner") { showToast("⚠️ 无权限清空助手操作记录"); return; }
+  if (realRole === "admin" && !getAllowAdminClearHelperLog()) {
+    showToast("⚠️ 所有者未开启管理员清空助手记录权限，仅所有者可清空");
+    addLog("越权尝试被拒绝", "尝试清空助手日志");
+    return;
+  }
+  showConfirm("确定清空所有助手操作记录吗？清空后无法追溯，请确认已完成必要的审计与备份。", () => {
+    requestAuth("清空助手操作记录（高危操作）", () => {
+      const count = helperLogs.length;
+      helperLogs = []; saveHelperLogs(); renderHelperLogs();
+      addLog("清空助手操作记录", `共清空 ${count} 条记录（已通过密码授权）`);
+      showToast("✅ 助手操作记录已清空（操作已记入日志）");
+    });
+  }, "清空助手操作记录（需密码授权）");
+}
+function ownerClearHelperLogs() {
+  if (!requireRole(["owner"])) return;
+  showConfirm("确定清空所有助手操作记录吗？清空后无法追溯，请确认已完成必要的审计与备份。", () => {
+    requestAuth("清空助手操作记录（高危操作）", () => {
+      const count = helperLogs.length;
+      helperLogs = []; saveHelperLogs(); renderHelperLogs();
+      addLog("清空助手操作记录", `共清空 ${count} 条记录（已通过密码授权）`);
+      showToast("✅ 助手操作记录已清空（操作已记入日志）");
+    });
+  }, "清空助手操作记录（需密码授权）");
+}
+
+/* ============ 验证码 ============ */
+function generateCaptcha() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 4; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+  captchaCode = code;
+  const img = document.getElementById("captchaImg");
+  if (img) img.textContent = code;
+}
+function refreshCaptcha() { generateCaptcha(); }
+
+/* ============ 助手账户 ============ */
+function saveHelperAccounts() { try { localStorage.setItem(HELPER_ACCOUNTS_KEY, JSON.stringify(helperAccounts)); } catch(e) {} }
+async function loadHelperAccounts() {
+  try {
+    const d = localStorage.getItem(HELPER_ACCOUNTS_KEY);
+    if (d) {
+      helperAccounts = JSON.parse(d);
+      let needSave = false;
+      for (const acc of helperAccounts) {
+        if (!acc.pass || !acc.pass.startsWith("enc:")) {
+          const plain = acc.pass && !acc.pass.includes(":") ? acc.pass : (acc.user === "helper" ? "helper" : "");
+          if (plain) { acc.pass = await encryptPassword(plain); needSave = true; }
+        }
+      }
+      if (needSave) saveHelperAccounts();
+    } else { helperAccounts = [{ user: "helper", pass: await encryptPassword("helper") }]; saveHelperAccounts(); }
+  } catch(e) { helperAccounts = [{ user: "helper", pass: await encryptPassword("helper") }]; }
+  if (helperAccounts.length === 0) { helperAccounts = [{ user: "helper", pass: await encryptPassword("helper") }]; saveHelperAccounts(); }
+}
+function renderHelperList() {
+  const container = document.getElementById("helperListContainer");
+  if (container) {
+    if (helperAccounts.length === 0) {
+      container.innerHTML = "<p style='color:#999;'>暂无助手账户</p>";
+    } else {
+      let html = `<table class="helper-table"><thead><tr><th>账户名</th><th>密码（需授权查看）</th><th>操作</th></tr></thead><tbody>`;
+      helperAccounts.forEach((acc, idx) => {
+        html += `<tr><td>${escapeHtml(acc.user)}</td><td><span class="pwd-cell" id="pwd-helper-${idx}">••••••</span><span class="pwd-view" data-role="helper" data-idx="${idx}">查看</span></td><td><span class="del-helper" data-idx="${idx}">删除</span></td></tr>`;
+      });
+      html += "</tbody></table>";
+      container.innerHTML = html;
+    }
+  }
+  const ownerContainer = document.getElementById("ownerHelperListContainer");
+  if (ownerContainer) {
+    if (helperAccounts.length === 0) {
+      ownerContainer.innerHTML = "<p style='color:#999;'>暂无助手账户</p>";
+    } else {
+      let html = `<table class="helper-table"><thead><tr><th>账户名</th><th>密码（需授权查看）</th><th>操作</th></tr></thead><tbody>`;
+      helperAccounts.forEach((acc, idx) => {
+        html += `<tr><td>${escapeHtml(acc.user)}</td><td><span class="pwd-cell" id="pwd-helper-owner-${idx}">••••••</span><span class="pwd-view" data-role="helper" data-idx="${idx}" data-source="owner">查看</span></td><td><span class="del-helper" data-idx="${idx}" data-source="owner">删除</span></td></tr>`;
+      });
+      html += "</tbody></table>";
+      ownerContainer.innerHTML = html;
+    }
+  }
+  const selOwner = document.getElementById("passHelperSelectOwner");
+  const selAdmin = document.getElementById("passHelperSelectAdmin");
+  const opts = helperAccounts.map(a => `<option value="${escapeHtml(a.user)}">${escapeHtml(a.user)}</option>`).join("");
+  if (selOwner) selOwner.innerHTML = opts;
+  if (selAdmin) selAdmin.innerHTML = opts;
+}
+async function addHelperAccountOwner() {
+  if (!requireRole(["owner"])) return;
+  const user = document.getElementById("newHelperUserOwner").value.trim();
+  const pass = document.getElementById("newHelperPwdOwner").value.trim();
+  if (!user) { showToast("⚠️ 请输入账户名"); return; }
+  if (!pass) { showToast("⚠️ 请输入密码"); return; }
+  if (helperAccounts.some(a => a.user === user)) { showToast("⚠️ 该助手账户名已存在"); return; }
+  if (adminAccounts.some(a => a.user === user)) { showToast("⚠️ 该账户名已被管理员使用"); return; }
+  if (user === ownerAccount.user) { showToast("⚠️ 该账户名已被所有者使用"); return; }
+  const encrypted = await encryptPassword(pass);
+  helperAccounts.push({ user, pass: encrypted }); saveHelperAccounts(); renderHelperList();
+  addLog("添加助手", `账户：${user}（所有者操作）`);
+  addHelperLog("账户被创建", `账户「${user}」由所有者创建`);
+  document.getElementById("newHelperUserOwner").value = ""; document.getElementById("newHelperPwdOwner").value = "";
+  showToast(`✅ 已添加助手账户「${user}」`);
+}
+async function addHelperAccount() {
+  const realRole = getRealRole();
+  if (realRole !== "admin" && realRole !== "owner") { showToast("⚠️ 无权限"); return; }
+  if (realRole === "admin" && !getAllowAdminAddHelper()) {
+    showToast("⚠️ 所有者未开启管理员添加助手账户权限");
+    addLog("越权尝试被拒绝", "尝试添加助手");
+    return;
+  }
+  const user = document.getElementById("newHelperUser").value.trim();
+  const pass = document.getElementById("newHelperPwd").value.trim();
+  if (!user) { showToast("⚠️ 请输入账户名"); return; }
+  if (!pass) { showToast("⚠️ 请输入密码"); return; }
+  if (helperAccounts.some(a => a.user === user)) { showToast("⚠️ 该助手账户名已存在"); return; }
+  if (adminAccounts.some(a => a.user === user)) { showToast("⚠️ 该账户名已被管理员使用"); return; }
+  if (user === ownerAccount.user) { showToast("⚠️ 该账户名已被所有者使用"); return; }
+  const encrypted = await encryptPassword(pass);
+  helperAccounts.push({ user, pass: encrypted }); saveHelperAccounts(); renderHelperList();
+  addLog("添加助手", `账户：${user}（管理员操作）`);
+  addHelperLog("账户被创建", `账户「${user}」由管理员 ${currentUser} 创建`);
+  document.getElementById("newHelperUser").value = ""; document.getElementById("newHelperPwd").value = "";
+  showToast(`✅ 已添加助手账户「${user}」`);
+}
+function deleteHelperAccount(idx) {
+  const realRole = getRealRole();
+  if (realRole !== "admin" && realRole !== "owner") { showToast("⚠️ 无权限"); return; }
+  if (realRole === "admin" && !getAllowAdminViewHelperList()) {
+    showToast("⚠️ 所有者未开启管理员查看助手账户列表权限");
+    addLog("越权尝试被拒绝", "尝试删除助手");
+    return;
+  }
+  if (helperAccounts.length <= 1) { showToast("⚠️ 至少保留一个助手账户"); return; }
+  const acc = helperAccounts[idx]; if (!acc) return;
+  showConfirm(`确定删除助手账户「${acc.user}」吗？删除后该账户将无法登录。`, () => {
+    helperAccounts.splice(idx, 1); saveHelperAccounts(); renderHelperList();
+    addLog("删除助手", `账户：${acc.user}`); showToast(`✅ 已删除助手账户「${acc.user}」`);
+  }, "删除助手");
+}
+async function changeHelperPassword(scope) {
+  const fromOwner = (scope === "owner");
+  const realRole = getRealRole();
+  if (realRole !== "owner" && !(realRole === "admin" && getAllowAdminHelperPwd())) {
+    showToast("⚠️ 无权限修改助手密码（需所有者开启权限）");
+    addLog("越权尝试被拒绝", "尝试修改助手密码");
+    return;
+  }
+  const selectId = fromOwner ? "passHelperSelectOwner" : "passHelperSelectAdmin";
+  const inputId = fromOwner ? "newHelperPassOwner" : "newHelperPassAdmin";
+  const select = document.getElementById(selectId); const passInput = document.getElementById(inputId);
+  if (!select || !passInput) return;
+  const user = select.value; const newPass = passInput.value.trim();
+  if (!user) { showToast("⚠️ 请选择助手账户"); return; }
+  if (!newPass) { showToast("⚠️ 密码不能为空"); passInput.focus(); return; }
+  if (newPass.length < 3) { showToast("⚠️ 新密码至少 3 位"); passInput.focus(); return; }
+  const acc = helperAccounts.find(a => a.user === user);
+  if (!acc) { showToast("⚠️ 账户不存在"); return; }
+  const oldPlain = await decryptPassword(acc.pass);
+  if (oldPlain === newPass) { showToast("⚠️ 新密码与当前密码相同"); passInput.focus(); return; }
+  showConfirm(`确定将助手账户「${acc.user}」的密码修改为「${newPass}」吗？\n修改后请及时告知该助手，并提醒其尽快自行修改。`, async () => {
+    acc.pass = await encryptPassword(newPass); saveHelperAccounts(); renderHelperList();
+    addLog("修改助手密码", `账户：${acc.user}（操作者：${currentUser}）`);
+    addHelperLog("密码被修改", `账户「${acc.user}」的密码已被 ${currentUser} 修改`);
+    passInput.value = ""; showPwdResult(acc.user, newPass);
+  }, "修改助手密码");
+}
+
+/* ============ 管理员账户 ============ */
+function saveAdminAccounts() { try { localStorage.setItem(ADMIN_ACCOUNTS_KEY, JSON.stringify(adminAccounts)); } catch(e) {} }
+async function loadAdminAccounts() {
+  try {
+    const d = localStorage.getItem(ADMIN_ACCOUNTS_KEY);
+    if (d) {
+      adminAccounts = JSON.parse(d);
+      let needSave = false;
+      for (const acc of adminAccounts) {
+        if (!acc.pass || !acc.pass.startsWith("enc:")) {
+          const plain = acc.pass && !acc.pass.includes(":") ? acc.pass : (acc.user === "admin" ? "admin" : "");
+          if (plain) { acc.pass = await encryptPassword(plain); needSave = true; }
+        }
+      }
+      if (needSave) saveAdminAccounts();
+    } else { adminAccounts = [{ user: "admin", pass: await encryptPassword("admin") }]; saveAdminAccounts(); }
+  } catch(e) { adminAccounts = [{ user: "admin", pass: await encryptPassword("admin") }]; }
+  if (adminAccounts.length === 0) { adminAccounts = [{ user: "admin", pass: await encryptPassword("admin") }]; saveAdminAccounts(); }
+}
+function renderAdminList() {
+  const container = document.getElementById("adminListContainer");
+  const select = document.getElementById("passAdminSelect");
+  if (!container) return;
+  if (adminAccounts.length === 0) {
+    container.innerHTML = "<p style='color:#999;'>暂无管理员账户</p>";
+    if (select) select.innerHTML = ""; return;
+  }
+  let html = `<table class="admin-table"><thead><tr><th>账户名</th><th>密码（需授权查看）</th><th>操作</th></tr></thead><tbody>`;
+  adminAccounts.forEach((acc, idx) => {
+    html += `<tr><td>${escapeHtml(acc.user)}</td><td><span class="pwd-cell" id="pwd-admin-${idx}">••••••</span><span class="pwd-view" data-role="admin" data-idx="${idx}">查看</span></td><td><span class="del-admin" data-idx="${idx}">删除</span></td></tr>`;
+  });
+  html += "</tbody></table>";
+  container.innerHTML = html;
+  if (select) select.innerHTML = adminAccounts.map(a => `<option value="${escapeHtml(a.user)}">${escapeHtml(a.user)}</option>`).join("");
+}
+async function addAdminAccount() {
+  if (!requireRole(["owner"])) return;
+  const user = document.getElementById("newAdminUser").value.trim();
+  const pass = document.getElementById("newAdminPwd").value.trim();
+  if (!user) { showToast("⚠️ 请输入账户名"); return; }
+  if (!pass) { showToast("⚠️ 请输入密码"); return; }
+  if (adminAccounts.some(a => a.user === user)) { showToast("⚠️ 该账户名已存在"); return; }
+  if (user === ownerAccount.user) { showToast("⚠️ 该账户名已被所有者使用"); return; }
+  if (helperAccounts.some(a => a.user === user)) { showToast("⚠️ 该账户名已被助手使用"); return; }
+  const encrypted = await encryptPassword(pass);
+  adminAccounts.push({ user, pass: encrypted }); saveAdminAccounts(); renderAdminList();
+  addLog("添加管理员", `账户：${user}`);
+  document.getElementById("newAdminUser").value = ""; document.getElementById("newAdminPwd").value = "";
+  showToast(`✅ 已添加管理员账户「${user}」`);
+}
+function deleteAdminAccount(idx) {
+  if (!requireRole(["owner"])) return;
+  if (adminAccounts.length <= 1) { showToast("⚠️ 至少保留一个管理员账户"); return; }
+  const acc = adminAccounts[idx]; if (!acc) return;
+  showConfirm(`确定删除管理员账户「${acc.user}」吗？删除后该账户将无法登录。`, () => {
+    adminAccounts.splice(idx, 1); saveAdminAccounts(); renderAdminList();
+    addLog("删除管理员", `账户：${acc.user}`); showToast(`✅ 已删除管理员账户「${acc.user}」`);
+  }, "删除管理员");
+}
+async function changeAdminPassword() {
+  if (!requireRole(["owner"])) return;
+  const select = document.getElementById("passAdminSelect");
+  const newPass = document.getElementById("newAdminPass").value.trim();
+  if (!select || !select.value) { showToast("⚠️ 请选择管理员账户"); return; }
+  if (!newPass) { showToast("⚠️ 密码不能为空"); return; }
+  const acc = adminAccounts.find(a => a.user === select.value);
+  if (!acc) { showToast("⚠️ 账户不存在"); return; }
+  acc.pass = await encryptPassword(newPass); saveAdminAccounts(); renderAdminList();
+  addLog("修改管理员密码", `账户：${acc.user}`);
+  document.getElementById("newAdminPass").value = "";
+  showToast(`✅ 已更新「${acc.user}」的密码`);
+}
+function saveOwnerAccount() { try { localStorage.setItem(OWNER_ACCOUNT_KEY, JSON.stringify(ownerAccount)); } catch(e) {} }
+async function loadOwnerAccount() {
+  try {
+    const d = localStorage.getItem(OWNER_ACCOUNT_KEY);
+    if (d) {
+      ownerAccount = JSON.parse(d);
+      if (!ownerAccount.pass || !ownerAccount.pass.startsWith("enc:")) {
+        const plain = ownerAccount.pass && !ownerAccount.pass.includes(":") ? ownerAccount.pass : "permission";
+        ownerAccount.pass = await encryptPassword(plain); saveOwnerAccount();
+      }
+    } else { ownerAccount = { user: "Owner", pass: await encryptPassword("permission") }; saveOwnerAccount(); }
+  } catch(e) { ownerAccount = { user: "Owner", pass: await encryptPassword("permission") }; saveOwnerAccount(); }
+}
+
+/* ============ 修改自己密码 ============ */
+function openChangeOwnPwd() {
+  if (isOwner) { showToast("⚠️ 所有者请到所有者控制台修改密码"); return; }
+  if (!isAdmin && !isHelper) { showToast("⚠️ 请先登录管理员或助手账户"); return; }
+  document.getElementById("changePwdUser").textContent = currentUser || "—";
+  document.getElementById("oldPwdInput").value = ""; document.getElementById("newPwdInput").value = "";
+  document.getElementById("newPwdInput2").value = ""; document.getElementById("changePwdErr").textContent = "";
+  document.getElementById("changePwdModal").style.display = "flex";
+  document.getElementById("oldPwdInput").focus();
+}
+function closeChangeOwnPwd() { document.getElementById("changePwdModal").style.display = "none"; }
+async function confirmChangeOwnPwd() {
+  if (isOwner) { document.getElementById("changePwdErr").textContent = "❌ 所有者请到所有者控制台修改密码"; return; }
+  if (!isAdmin && !isHelper) { document.getElementById("changePwdErr").textContent = "❌ 请先登录管理员或助手账户"; return; }
+  const oldPwd = document.getElementById("oldPwdInput").value;
+  const newPwd = document.getElementById("newPwdInput").value.trim();
+  const newPwd2 = document.getElementById("newPwdInput2").value.trim();
+  const errEl = document.getElementById("changePwdErr");
+  if (!oldPwd) { errEl.textContent = "❌ 请输入当前密码"; document.getElementById("oldPwdInput").focus(); return; }
+  if (!newPwd) { errEl.textContent = "❌ 请输入新密码"; document.getElementById("newPwdInput").focus(); return; }
+  if (newPwd.length < 3) { errEl.textContent = "❌ 新密码至少 3 位"; document.getElementById("newPwdInput").focus(); return; }
+  if (newPwd !== newPwd2) { errEl.textContent = "❌ 两次输入的新密码不一致"; document.getElementById("newPwdInput2").focus(); return; }
+  let acc = null; let isAdminAcc = false;
+  if (isAdmin && !isOwner) { acc = adminAccounts.find(a => a.user === currentUser); isAdminAcc = true; }
+  else if (isHelper) { acc = helperAccounts.find(a => a.user === currentUser); }
+  if (!acc) { errEl.textContent = "❌ 账户不存在，请重新登录"; return; }
+  const oldPlain = await decryptPassword(acc.pass);
+  if (oldPlain !== oldPwd) { errEl.textContent = "❌ 当前密码错误"; document.getElementById("oldPwdInput").focus(); return; }
+  if (oldPlain === newPwd) { errEl.textContent = "❌ 新密码不能与当前密码相同"; document.getElementById("newPwdInput").focus(); return; }
+  acc.pass = await encryptPassword(newPwd);
+  if (isAdminAcc) { saveAdminAccounts(); addLog("修改本人密码", `账户：${acc.user}`); if (typeof renderAdminList === "function") renderAdminList(); }
+  else { saveHelperAccounts(); addHelperLog("修改本人密码", `账户：${acc.user}`); if (typeof renderHelperList === "function") renderHelperList(); }
+  closeChangeOwnPwd(); showPwdResult(acc.user, newPwd);
+}
+
+/* ============ 密码显示 ============ */
+function showPwdResult(user, pwd) {
+  document.getElementById("pwdShowUser").textContent = user;
+  document.getElementById("pwdShowValue").textContent = pwd;
+  document.getElementById("pwdShowModal").style.display = "flex";
+}
+function closePwdShow() {
+  document.getElementById("pwdShowModal").style.display = "none";
+  document.getElementById("pwdShowValue").textContent = "—";
+  document.getElementById("pwdShowUser").textContent = "—";
+  showToast("请记住新密码，已关闭显示");
+}
+
+/* ============ 规则 ============ */
+function getCurrentRules() {
+  const base = currentType === "加" ? bonusRules : deductionRules;
+  const custom = currentType === "加" ? customBonusRules : customDeductRules;
+  return [...base, ...custom];
+}
+function saveCustomRules() {
+  try { localStorage.setItem(CUSTOM_BONUS_KEY, JSON.stringify(customBonusRules)); localStorage.setItem(CUSTOM_DEDUCT_KEY, JSON.stringify(customDeductRules)); } catch (e) {}
+}
+function loadCustomRules() {
+  try {
+    const b = localStorage.getItem(CUSTOM_BONUS_KEY); if (b) customBonusRules = JSON.parse(b);
+    const d = localStorage.getItem(CUSTOM_DEDUCT_KEY); if (d) customDeductRules = JSON.parse(d);
+  } catch (e) { customBonusRules = []; customDeductRules = []; }
+}
+
+/* ============ 待审核记录 ============ */
+function savePendingRecords() { try { localStorage.setItem(PENDING_KEY, JSON.stringify(pendingRecords)); } catch(e) {} }
+function loadPendingRecords() { try { const d = localStorage.getItem(PENDING_KEY); if (d) pendingRecords = JSON.parse(d); } catch(e) { pendingRecords = []; } }
+function renderPendingList() {
+  const container = document.getElementById("pendingListContainer");
+  if (!container) return;
+  if (!isAdmin && !isOwner) { container.innerHTML = ""; return; }
+  if (pendingRecords.length === 0) { container.innerHTML = "<p style='color:#999;'>暂无待审核记录</p>"; return; }
+  container.innerHTML = pendingRecords.map((r, idx) => {
+    return `<div class="pending-item"><span>${escapeHtml(r.line)} <span style="color:#f39c12;">(由 ${escapeHtml(r.operator)} 提交)</span></span><span class="actions"><span class="approve" data-idx="${idx}" data-act="approve">✔ 通过</span><span class="reject" data-idx="${idx}" data-act="reject">✘ 拒绝</span></span></div>`;
+  }).join("");
+}
+function approvePending(idx) {
+  if (!requireRole(["admin","owner"])) return;
+  const rec = pendingRecords[idx];
+  if (!rec) { showToast("⚠️ 记录不存在或已被处理"); renderPendingList(); return; }
+  records.push({ ...rec, id: Date.now() + Math.random() });
+  pendingRecords.splice(idx, 1); savePendingRecords(); saveToLocal();
+  renderPendingList(); renderRecords(); renderRank(); renderStudents(); renderMySubmissions();
+  addLog("审核通过", rec.line); showToast("✅ 已通过并加入正式记录");
+}
+function rejectPending(idx) {
+  if (!requireRole(["admin","owner"])) return;
+  const rec = pendingRecords[idx];
+  if (!rec) { showToast("⚠️ 记录不存在或已被处理"); renderPendingList(); return; }
+  showConfirm(`确定拒绝这条记录吗？\n${rec.line}\n\n请确认拒绝理由正当，不得因个人好恶或打击报复而拒绝。`, () => {
+    pendingRecords.splice(idx, 1); savePendingRecords(); renderPendingList(); renderMySubmissions();
+    addLog("审核拒绝", rec.line); showToast("🗑️ 已拒绝该记录");
+  }, "拒绝记录");
+}
+
+/* ============ 助手我的提交 ============ */
+function renderMySubmissions() {
+  const container = document.getElementById("mySubmissionsContainer");
+  if (!container) return;
+  if (!isHelper || isAdmin || isOwner) { container.innerHTML = ""; return; }
+  const myList = [];
+  pendingRecords.forEach((r, idx) => { if (r.operator === currentUser) myList.push({ ...r, realIdx: idx }); });
+  if (myList.length === 0) { container.innerHTML = "<p style='color:#999;'>暂无待审核的提交</p>"; return; }
+  container.innerHTML = myList.map(r => `<div class="my-item"><span>${escapeHtml(r.line)}</span><span class="withdraw" data-idx="${r.realIdx}">撤回</span></div>`).join("");
+}
+function withdrawMySubmission(idx) {
+  if (getRealRole() !== "helper") { showToast("⚠️ 仅助手可撤回自己的提交"); return; }
+  const rec = pendingRecords[idx];
+  if (!rec) { showToast("⚠️ 记录不存在"); return; }
+  if (rec.operator !== currentUser) { showToast("⚠️ 只能撤回自己提交的记录"); return; }
+  showConfirm(`确定撤回这条提交吗？\n${rec.line}`, () => {
+    pendingRecords.splice(idx, 1); savePendingRecords(); renderPendingList(); renderMySubmissions();
+    addHelperLog("撤回提交", rec.line); showToast("↩️ 已撤回该提交");
+  }, "撤回提交");
+}
+
+/* ============ 渲染行为 ============ */
+const behaviorGrid = document.getElementById("behaviorGrid");
+const behaviorTitle = document.getElementById("behaviorTitle");
+function renderBehaviors() {
+  const baseRules = (currentType === "加") ? bonusRules : deductionRules;
+  const customRules = (currentType === "加") ? customBonusRules : customDeductRules;
+  if (currentType === "加") {
+    behaviorTitle.className = "bonus-title";
+    behaviorTitle.innerHTML = `<span class="title-icon">➕</span> 加分项（点击选择）<span class="title-tag">当前：加分</span>`;
+  } else {
+    behaviorTitle.className = "deduct-title";
+    behaviorTitle.innerHTML = `<span class="title-icon">➖</span> 扣分项（点击选择）<span class="title-tag">当前：扣分</span>`;
+  }
+  behaviorGrid.innerHTML = "";
+  behaviorGrid.classList.remove("bonus-mode", "deduct-mode");
+  behaviorGrid.classList.add(currentType === "加" ? "bonus-mode" : "deduct-mode");
+  if (baseRules.length > 0) {
+    const title1 = document.createElement("div");
+    title1.className = "behavior-section-title";
+    title1.innerHTML = `📌 常用行为 <span class="count">(${baseRules.length}项)</span>`;
+    behaviorGrid.appendChild(title1);
+    baseRules.forEach(item => { behaviorGrid.appendChild(createBehaviorButton(item[0], item[1], false)); });
+  }
+  if (customRules.length > 0) {
+    const title2 = document.createElement("div");
+    title2.className = "behavior-section-title custom-title";
+    title2.innerHTML = `✨ 自定义行为 <span class="count">(${customRules.length}项，点击 ✕ 可删除)</span>`;
+    behaviorGrid.appendChild(title2);
+    customRules.forEach(item => { behaviorGrid.appendChild(createBehaviorButton(item[0], item[1], true)); });
+  } else {
+    const empty = document.createElement("div");
+    empty.className = "behavior-section-title custom-title";
+    empty.innerHTML = `✨ 自定义行为 <span class="count">(暂无，可在下方输入框添加)</span>`;
+    behaviorGrid.appendChild(empty);
+  }
+  if (currentBehavior) {
+    const allRules = [...baseRules, ...customRules];
+    const exists = allRules.some(item => item[0] === currentBehavior.name);
+    if (!exists) { currentBehavior = null; updateCurrentBar(); }
+  }
+}
+function createBehaviorButton(name, score, isCustom) {
+  const btn = document.createElement("button");
+  btn.dataset.name = name; btn.dataset.score = score;
+  if (isCustom) {
+    btn.classList.add("custom-item");
+    const label = document.createElement("span");
+    label.className = "beh-label"; label.textContent = `${name}（${score}分）`; btn.appendChild(label);
+    const del = document.createElement("span");
+    del.className = "del-custom"; del.textContent = "✕"; del.title = "删除此自定义行为";
+    del.onclick = (e) => { e.stopPropagation(); e.preventDefault(); deleteCustomBehavior(name); };
+    btn.appendChild(del);
+  } else {
+    btn.classList.add("builtin-item"); btn.textContent = `${name}（${score}分）`;
+  }
+  btn.onclick = () => selectBehavior(name, score, btn);
+  if (currentBehavior && currentBehavior.name === name) btn.classList.add("selected");
+  return btn;
+}
+function selectBehavior(name, score, btn) {
+  currentBehavior = { name, score };
+  [...behaviorGrid.children].forEach(b => b.classList.remove("selected"));
+  if (btn) btn.classList.add("selected");
+  updateCurrentBar();
+}
+function deleteCustomBehavior(name) {
+  if (!requireRole(["admin","owner","helper"])) return;
+  const isBonus = (currentType === "加");
+  const arr = isBonus ? customBonusRules : customDeductRules;
+  const idx = arr.findIndex(x => x[0] === name);
+  if (idx === -1) { showToast("⚠️ 未找到该自定义行为"); renderBehaviors(); return; }
+  const typeLabel = isBonus ? "加分项" : "扣分项";
+  showConfirm(`确定删除自定义${typeLabel}「${name}」吗？\n\n· 删除后该选项将从列表中移除，不再显示。\n· 已记录的历史数据不受影响。`, () => {
+    arr.splice(idx, 1); saveCustomRules();
+    if (currentBehavior && currentBehavior.name === name) { currentBehavior = null; updateCurrentBar(); }
+    renderBehaviors(); showToast(`✅ 已删除自定义行为「${name}」`);
+  }, "删除自定义行为：" + name);
+}
+function addCustomBehavior() {
+  if (!requireRole(["admin","owner","helper"])) return;
+  const nameInput = document.getElementById("customName");
+  const scoreInput = document.getElementById("customScore");
+  const name = nameInput.value.trim(); const score = parseInt(scoreInput.value, 10);
+  if (!name) { showToast("⚠️ 请输入自定义行为名称"); nameInput.focus(); return; }
+  if (!score || score < 1) { showToast("⚠️ 请输入有效的分值（≥1）"); scoreInput.focus(); return; }
+  const rules = getCurrentRules();
+  if (rules.some(item => item[0] === name)) { showToast("⚠️ 该行为已存在，请修改名称"); nameInput.focus(); return; }
+  if (currentType === "加") { customBonusRules.push([name, score]); saveCustomRules(); }
+  else { customDeductRules.push([name, score]); saveCustomRules(); }
+  renderBehaviors();
+  let foundBtn = null;
+  for (const btn of behaviorGrid.children) { if (btn.dataset.name === name) { foundBtn = btn; break; } }
+  if (foundBtn) {
+    selectBehavior(name, score, foundBtn);
+    foundBtn.classList.add("just-added");
+    setTimeout(() => foundBtn.classList.remove("just-added"), 400);
+    foundBtn.style.transition = "box-shadow 0.3s";
+    foundBtn.style.boxShadow = "0 0 0 3px rgba(142,68,173,0.4)";
+    setTimeout(() => { foundBtn.style.boxShadow = ""; }, 1200);
+  } else { currentBehavior = { name, score }; updateCurrentBar(); }
+  nameInput.value = ""; scoreInput.value = "1"; nameInput.focus();
+  showToast(`✅ 已添加自定义行为「${name}」并选中（可点 ✕ 删除）`);
+}
+const btnBonus = document.getElementById("btnBonus");
+const btnDeduct = document.getElementById("btnDeduct");
+function setType(type) {
+  currentType = type; currentBehavior = null;
+  if (type === "加") { btnBonus.className = "active-bonus"; btnDeduct.className = ""; }
+  else { btnBonus.className = ""; btnDeduct.className = "active-deduct"; }
+  renderBehaviors(); updateCurrentBar();
+}
+
+/* ============ 渲染学生 ============ */
+const studentGrid = document.getElementById("studentGrid");
+function renderStudents() {
+  studentGrid.innerHTML = "";
+  for (const id in students) {
+    const btn = document.createElement("button");
+    btn.textContent = students[id]; btn.dataset.id = id;
+    const hasFormal = records.some(r => r.name === students[id]);
+    const hasMyPending = isHelper && !isAdmin && !isOwner && pendingRecords.some(r => r.name === students[id] && r.operator === currentUser);
+    if (hasFormal || hasMyPending) btn.classList.add("has-record");
+    if (String(currentStudentId) === String(id)) btn.classList.add("selected");
+    btn.onclick = () => onStudentClick(id, btn);
+    studentGrid.appendChild(btn);
+  }
+}
+
+/* ============ 点击学生记录 ============ */
+function onStudentClick(id, btn) {
+  const realRole = getRealRole();
+  if (realRole === "guest") { showToast("⚠️ 请先登录管理员、助手或所有者账号"); return; }
+  const week = document.getElementById("weekInput").value.trim();
+  const date = document.getElementById("dateInput").value.trim();
+  if (!currentBehavior) { showToast("⚠️ 请先选择行为"); return; }
+  if (!week) { showToast("⚠️ 请先填写周次"); document.getElementById("weekInput").focus(); return; }
+  if (!date) { showToast("⚠️ 请先填写日期"); document.getElementById("dateInput").focus(); return; }
+  const name = students[id];
+  const { name: behavior, score } = currentBehavior;
+  const submitKey = `${id}|${behavior}|${currentType}|${score}|${week}|${date}`;
+  const now = Date.now();
+  if (submitKey === lastSubmitKey && (now - lastSubmitTime) < 800) { showToast("⚠️ 请勿重复提交"); return; }
+  lastSubmitKey = submitKey; lastSubmitTime = now;
+  let dateDisplay = date;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) { const parts = date.split("-"); dateDisplay = parseInt(parts[1], 10) + "." + parseInt(parts[2], 10); }
+  const weekDisplay = "第" + week + "周";
+  const line = `{${name}}；${weekDisplay}（${dateDisplay}）：${behavior}；${currentType}${score}分。`;
+  const newRecord = { id: Date.now() + Math.random(), name, week: weekDisplay, date: dateDisplay, behavior, type: currentType, score, line, operator: currentUser, editReason: "", editHistory: [] };
+  if (realRole === "helper") {
+    pendingRecords.push(newRecord); savePendingRecords(); renderPendingList(); renderMySubmissions();
+    addHelperLog("提交待审核", line); showToast(`📝 已提交待审核：${line}`);
+  } else if (realRole === "admin" || realRole === "owner") {
+    records.push(newRecord); renderRecords(); renderRank(); renderStudents(); saveToLocal();
+    addLog("记录学分", `${name} ${behavior} ${currentType}${score}分`); showToast(line);
+  } else {
+    showToast("⚠️ 无权限"); return;
+  }
+  currentStudentId = id; renderStudents(); updateCurrentBar();
+}
+
+/* ============ 当前状态条 ============ */
+const currentBar = document.getElementById("currentBar");
+function updateCurrentBar() {
+  const weekRaw = document.getElementById("weekInput").value.trim();
+  const dateRaw = document.getElementById("dateInput").value.trim();
+  const week = weekRaw ? "第" + weekRaw + "周" : "第__周";
+  let date = dateRaw || "__";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) { const parts = dateRaw.split("-"); date = parseInt(parts[1], 10) + "." + parseInt(parts[2], 10); }
+  const studentName = currentStudentId ? students[currentStudentId] : "____";
+  const behavior = currentBehavior ? `${currentBehavior.name}（${currentType}${currentBehavior.score}分）` : "____";
+  currentBar.innerHTML = `当前：<b>{${escapeHtml(studentName)}}</b>；${escapeHtml(week)}（${escapeHtml(date)}）：${escapeHtml(behavior)}。<br><span style="color:#888;font-size:13px;">点学生按钮即可连续记录，无需重复点添加。</span>`;
+}
+document.getElementById("weekInput").addEventListener("input", updateCurrentBar);
+document.getElementById("dateInput").addEventListener("input", updateCurrentBar);
+
+/* ============ 保存 / 读取 ============ */
+function saveToLocal() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); } catch (e) { showStatus("❌ 保存失败：" + e.message); } }
+function loadFromLocal() { try { const data = localStorage.getItem(STORAGE_KEY); if (data) records = JSON.parse(data); } catch (e) { records = []; } }
+function manualSave() { if (!requireRole(["admin","owner","helper"])) return; saveToLocal(); savePendingRecords(); showStatus("✅ 已手动保存"); }
+
+/* ============ 管理员记录权限 ============ */
+function getAdminRecordPermission(record) {
+  if (!record) return { canEdit: false, canDelete: false, reason: "记录不存在" };
+  const operator = record.operator;
+  if (operator === ownerAccount.user) return { canEdit: false, canDelete: false, reason: "管理员无权修改或删除所有者录入的记录" };
+  const isSelf = operator === currentUser;
+  const isHelperRecord = helperAccounts.some(h => h.user === operator);
+  if (isSelf) return { canEdit: true, canDelete: true, reason: "" };
+  if (isHelperRecord) return { canEdit: true, canDelete: true, reason: "" };
+  return { canEdit: false, canDelete: false, reason: "管理员只能修改自己或助手录入的记录" };
+}
+function canEditRecord(record) {
+  if (!record) return false;
+  const realRole = getRealRole();
+  if (realRole === "owner") return true;
+  if (realRole === "admin" && getAllowAdminEdit()) return getAdminRecordPermission(record).canEdit;
+  return false;
+}
+
+/* ============ 删除 ============ */
+let deletingRecordId = null;
+function openDeleteModal(recordId) {
+  if (!requireRole(["admin","owner"])) return;
+  const record = findRecordById(recordId);
+  if (!record) { showToast("⚠️ 记录不存在或已被删除"); renderRecords(); return; }
+  const realRole = getRealRole();
+  if (realRole === "admin") { const perm = getAdminRecordPermission(record); if (!perm.canDelete) { showToast("⚠️ " + perm.reason); return; } }
+  deletingRecordId = record.id;
+  document.getElementById("deleteReason").value = ""; document.getElementById("deleteErr").textContent = "";
+  const origin = document.getElementById("deleteOrigin");
+  if (origin) origin.textContent = "原记录：" + record.line + (record.operator ? "（录入人：" + record.operator + "）" : "");
+  document.getElementById("deleteModal").style.display = "flex";
+  document.getElementById("deleteReason").focus();
+}
+function closeDeleteModal() { document.getElementById("deleteModal").style.display = "none"; deletingRecordId = null; }
+function confirmDeleteRecord() {
+  if (!requireRole(["admin","owner"])) return;
+  if (deletingRecordId === null || deletingRecordId === undefined) { document.getElementById("deleteErr").textContent = "❌ 未选中记录"; return; }
+  const record = findRecordById(deletingRecordId);
+  if (!record) { document.getElementById("deleteErr").textContent = "❌ 记录不存在或已被删除"; return; }
+  const realRole = getRealRole();
+  if (realRole === "admin") { const perm = getAdminRecordPermission(record); if (!perm.canDelete) { document.getElementById("deleteErr").textContent = "❌ " + perm.reason; return; } }
+  const reason = document.getElementById("deleteReason").value.trim();
+  if (!reason) { document.getElementById("deleteErr").textContent = "❌ 请填写删除理由（必填）"; document.getElementById("deleteReason").focus(); return; }
+  const idx = findRecordIndexById(deletingRecordId);
+  if (idx === -1) { document.getElementById("deleteErr").textContent = "❌ 记录不存在"; return; }
+  const deletedLine = record.line;
+  records.splice(idx, 1); renderRecords(); renderRank(); renderStudents(); saveToLocal();
+  addLog("删除记录", `记录：${deletedLine}\n理由：${reason}`);
+  closeDeleteModal(); showToast("🗑️ 已删除");
+}
+
+/* ============ 改分 ============ */
+let editingRecordId = null;
+function openScoreModal(recordId) {
+  if (!requireRole(["admin","owner"])) return;
+  const record = findRecordById(recordId);
+  if (!record) { showToast("⚠️ 记录不存在或已被删除"); renderRecords(); return; }
+  const realRole = getRealRole();
+  if (realRole === "admin") {
+    if (!getAllowAdminEdit()) { showToast("⚠️ 所有者未开启管理员改分权限"); return; }
+    const perm = getAdminRecordPermission(record);
+    if (!perm.canEdit) { showToast("⚠️ " + perm.reason); return; }
+  }
+  editingRecordId = record.id;
+  document.getElementById("newBehaviorInput").value = record.behavior || "";
+  document.getElementById("newScoreValue").value = record.score;
+  document.getElementById("newScoreType").value = record.type;
+  document.getElementById("editReason").value = "";
+  document.getElementById("scoreErr").textContent = "";
+  const origin = document.getElementById("scoreOrigin");
+  if (origin) origin.innerHTML = "原记录：<b>" + escapeHtml(record.line) + "</b>" + (record.operator ? "（录入人：" + escapeHtml(record.operator) + "）" : "");
+  document.getElementById("scoreModal").style.display = "flex";
+  document.getElementById("newBehaviorInput").focus();
+}
+function closeScoreModal() { document.getElementById("scoreModal").style.display = "none"; editingRecordId = null; }
+function confirmEditScore() {
+  if (!requireRole(["admin","owner"])) return;
+  if (editingRecordId === null || editingRecordId === undefined) { document.getElementById("scoreErr").textContent = "❌ 未选中记录，请重新点击“改分”"; return; }
+  const record = findRecordById(editingRecordId);
+  if (!record) { document.getElementById("scoreErr").textContent = "❌ 记录不存在或已被删除"; return; }
+  const realRole = getRealRole();
+  if (realRole === "admin") {
+    if (!getAllowAdminEdit()) { document.getElementById("scoreErr").textContent = "❌ 所有者未开启管理员改分权限"; return; }
+    const perm = getAdminRecordPermission(record);
+    if (!perm.canEdit) { document.getElementById("scoreErr").textContent = "❌ " + perm.reason; return; }
+  }
+  const newBehavior = document.getElementById("newBehaviorInput").value.trim();
+  const newScore = parseInt(document.getElementById("newScoreValue").value, 10);
+  const newType = document.getElementById("newScoreType").value;
+  const reason = document.getElementById("editReason").value.trim();
+  if (!newBehavior) { document.getElementById("scoreErr").textContent = "❌ 请填写新内容（加分/扣分项）"; document.getElementById("newBehaviorInput").focus(); return; }
+  if (!newScore || newScore < 1) { document.getElementById("scoreErr").textContent = "❌ 请输入有效分值（≥1）"; document.getElementById("newScoreValue").focus(); return; }
+  if (newType !== "加" && newType !== "扣") { document.getElementById("scoreErr").textContent = "❌ 类型无效"; return; }
+  if (!reason) { document.getElementById("scoreErr").textContent = "❌ 请填写修改理由（必填，与内容分开记录）"; document.getElementById("editReason").focus(); return; }
+  const oldLine = record.line; const oldBehavior = record.behavior; const oldScore = record.score; const oldType = record.type; const oldOperator = record.operator || "未知";
+  record.behavior = newBehavior; record.score = newScore; record.type = newType;
+  record.line = `{${record.name}}；${record.week}（${record.date}）：${newBehavior}；${newType}${newScore}分。`;
+  record.editReason = reason; record.lastEditTime = Date.now(); record.lastEditor = currentUser;
+  if (!Array.isArray(record.editHistory)) record.editHistory = [];
+  record.editHistory.push({ time: Date.now(), editor: currentUser, oldBehavior, newBehavior, oldScore, newScore, oldType, newType, reason });
+  let logDetail = `原：${oldLine}\n新：${record.line}`;
+  if (oldBehavior !== newBehavior) logDetail += `\n内容：${oldBehavior} → ${newBehavior}`;
+  if (oldScore !== newScore || oldType !== newType) logDetail += `\n分值：${oldType}${oldScore}分 → ${newType}${newScore}分`;
+  logDetail += `\n理由：${reason}\n原录入人：${oldOperator}；修改人：${currentUser}`;
+  renderRecords(); renderRank(); saveToLocal(); addLog("修改记录", logDetail); closeScoreModal();
+  showToast("✅ 已修改（内容与理由已分别记录）");
+}
+
+/* ============ ★ 搜索核心逻辑 ============ */
+function matchesSearch(record) {
+  if (!searchKeyword) return true;
+  const kw = searchKeyword.toLowerCase();
+  const name = (record.name || "").toLowerCase();
+  const behavior = (record.behavior || "").toLowerCase();
+  const line = (record.line || "").toLowerCase();
+  return name.includes(kw) || behavior.includes(kw) || line.includes(kw);
+}
+
+function applySearch() {
+  searchKeyword = document.getElementById("searchInput").value.trim();
+  renderRecords();
+  updateSearchResultCount();
+  showToast(searchKeyword ? `🔍 已筛选：含「${searchKeyword}」的记录` : "显示全部记录");
+}
+
+function clearSearch() {
+  searchKeyword = "";
+  document.getElementById("searchInput").value = "";
+  renderRecords();
+  updateSearchResultCount();
+  showToast("已显示全部记录");
+}
+
+function updateSearchResultCount() {
+  const el = document.getElementById("searchResultCount");
+  if (!el) return;
+  const total = records.length;
+  if (!searchKeyword) {
+    el.innerHTML = `共 <b>${total}</b> 条记录`;
+  } else {
+    const matched = records.filter(matchesSearch).length;
+    el.innerHTML = `搜索「${escapeHtml(searchKeyword)}」匹配 <b>${matched}</b> / ${total} 条`;
+  }
+}
+
+/* ============ 渲染正式记录（带搜索高亮） ============ */
+function renderRecords() {
+  const list = document.getElementById("recordList");
+  if (!list) return;
+
+  const filtered = searchKeyword ? records.filter(matchesSearch) : records;
+
+  if (filtered.length === 0) {
+    if (searchKeyword) {
+      list.innerHTML = `<p style='color:#999;'>没有找到包含「${escapeHtml(searchKeyword)}」的记录。</p>`;
+    } else {
+      list.innerHTML = "<p style='color:#999;'>暂无正式记录</p>";
+    }
+    return;
+  }
+
+  const sorted = [...filtered].reverse();
+
+  list.innerHTML = sorted.map(r => {
+    const cls = r.type === "扣" ? "deduct" : "bonus";
+    let actions = '';
+    const realRole = getRealRole();
+
+    if (realRole === "owner") {
+      actions += `<span class="del" data-id="${escapeHtml(r.id)}">删除</span>`;
+    } else if (realRole === "admin") {
+      const perm = getAdminRecordPermission(r);
+      if (perm.canDelete) actions += `<span class="del" data-id="${escapeHtml(r.id)}">删除</span>`;
+    }
+
+    if (canEditRecord(r)) {
+      actions += `<span class="edit-score" data-id="${escapeHtml(r.id)}">改分</span>`;
+    }
+
+    let meta = "";
+    if (realRole === "admin" && r.operator) {
+      meta = `<span class="meta-edit">（录入：${escapeHtml(r.operator)}）</span>`;
+    }
+
+    let editedTag = "";
+    if (r.editReason) {
+      editedTag = `<span class="edited-tag" title="修改理由：${escapeHtml(r.editReason)}">✏️ 已修改</span>`;
+    }
+
+    let displayLine = escapeHtml(r.line);
+    if (searchKeyword) {
+      const escapedKeyword = escapeHtml(searchKeyword);
+      try {
+        const re = new RegExp(escapedKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), "gi");
+        displayLine = displayLine.replace(re, match => `<span class="highlight-keyword">${match}</span>`);
+      } catch (e) { /* 忽略正则错误 */ }
+    }
+
+    return `<div class="record-line ${cls} ${searchKeyword ? 'highlight' : ''}">
+      <span>${displayLine}${meta}${editedTag}</span>
+      <span style="display:flex;gap:6px;">${actions}</span>
+    </div>`;
+  }).join("");
+}
+
+/* ============ 排名 ============ */
+function renderRank() {
+  const box = document.getElementById("rankTable");
+  if (records.length === 0) { box.innerHTML = "<p style='color:#999;'>暂无数据</p>"; return; }
+  const map = {};
+  records.forEach(r => {
+    if (!map[r.name]) map[r.name] = { 加: 0, 扣: 0, 次数: 0 };
+    map[r.name][r.type] += r.score; map[r.name].次数 += 1;
+  });
+  const arr = [];
+  for (const name in map) { const s = map[name]; arr.push({ name, 加: s.加, 扣: s.扣, 净分: s.加 - s.扣, 次数: s.次数 }); }
+  arr.sort((a, b) => b.净分 - a.净分);
+  let html = `<table><thead><tr><th>排名</th><th>姓名</th><th>加分</th><th>扣分</th><th>净分</th><th>次数</th></tr></thead><tbody>`;
+  arr.forEach((item, idx) => {
+    const rank = idx + 1;
+    let cls = ""; if (rank === 1) cls = "rank-1"; else if (rank === 2) cls = "rank-2"; else if (rank === 3) cls = "rank-3";
+    html += `<tr><td class="${cls}">${rank}</td><td>${escapeHtml(item.name)}</td><td>${item.加}</td><td>${item.扣}</td><td class="${cls}">${item.净分}</td><td>${item.次数}</td></tr>`;
+  });
+  html += "</tbody></table>"; box.innerHTML = html;
+}
+
+/* ============ 导出 ============ */
+function exportExcel() {
+  if (!requireRole(["admin","owner","helper"])) return;
+  if (records.length === 0) { alert("暂无正式记录，无法导出。"); return; }
+  const detail = [["姓名", "周次", "日期", "行为", "类型", "分值", "完整语句", "操作人", "是否修改", "修改理由"]];
+  records.forEach(r => { detail.push([r.name, r.week, r.date, r.behavior, r.type, r.score, r.line, r.operator || "", r.editReason ? "是" : "", r.editReason || ""]); });
+  const map = {};
+  records.forEach(r => { if (!map[r.name]) map[r.name] = { 加: 0, 扣: 0 }; map[r.name][r.type] += r.score; });
+  const arr = []; for (const name in map) { const s = map[name]; arr.push([name, s.加, s.扣, s.加 - s.扣]); }
+  arr.sort((a, b) => b[3] - a[3]);
+  const summary = [["姓名", "加分合计", "扣分合计", "净分"], ...arr];
+  const edits = [["时间", "操作人", "姓名", "周次", "日期", "原内容", "新内容", "原类型", "原分值", "新类型", "新分值", "修改理由"]];
+  records.forEach(r => { if (Array.isArray(r.editHistory)) { r.editHistory.forEach(h => {
+    const t = new Date(h.time);
+    const ts = t.getFullYear() + "-" + String(t.getMonth()+1).padStart(2,"0") + "-" + String(t.getDate()).padStart(2,"0") + " " + String(t.getHours()).padStart(2,"0") + ":" + String(t.getMinutes()).padStart(2,"0") + ":" + String(t.getSeconds()).padStart(2,"0");
+    edits.push([ts, h.editor || "", r.name, r.week, r.date, h.oldBehavior, h.newBehavior, h.oldType, h.oldScore, h.newType, h.newScore, h.reason]);
+  }); } });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detail), "明细");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "汇总排名");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(edits), "修改历史");
+  const now = new Date();
+  const ts = now.getFullYear() + String(now.getMonth()+1).padStart(2,"0") + String(now.getDate()).padStart(2,"0") + "_" + String(now.getHours()).padStart(2,"0") + String(now.getMinutes()).padStart(2,"0") + String(now.getSeconds()).padStart(2,"0");
+  XLSX.writeFile(wb, `学生行为记录_${ts}.xlsx`);
+  addLog("导出Excel", `共${records.length}条正式记录`);
+  showToast("⚠️ 导出文件含学生隐私，请妥善保管，勿随意转发");
+}
+function exportTxt() {
+  if (!requireRole(["admin","owner","helper"])) return;
+  if (records.length === 0) { alert("暂无正式记录，无法导出。"); return; }
+  const content = records.map(r => r.line).join("\n");
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob); const a = document.createElement("a");
+  a.href = url; a.download = "学生行为记录.txt"; a.click(); URL.revokeObjectURL(url);
+  addLog("导出TXT", `共${records.length}条正式记录`);
+  showToast("⚠️ 导出文件含学生隐私，请妥善保管，勿随意转发");
+}
+
+/* ============ 清空 ============ */
+function clearAll() {
+  const realRole = getRealRole();
+  if (realRole === "owner") {
+    // 允许
+  } else if (realRole === "admin" && getAllowAdminClear()) {
+    // 允许
+  } else {
+    showToast("⚠️ 仅所有者或已授权的管理员可清空记录");
+    addLog("越权尝试被拒绝", "尝试清空记录");
+    return;
+  }
+  const pendingCount = pendingRecords.length;
+  const msg = "确定清空所有记录吗？此操作不可恢复！\n\n" + `· 正式记录：${records.length} 条\n` + `· 待审核记录：${pendingCount} 条（将一并清空）\n\n` + "建议先导出备份。清空属于高危操作，需要输入当前账户密码授权，并会记入操作日志。";
+  showConfirm(msg, () => {
+    requestAuth("清空所有记录（高危操作）", () => {
+      const count = records.length; records = []; pendingRecords = [];
+      savePendingRecords(); renderRecords(); renderRank(); renderStudents(); renderPendingList(); renderMySubmissions(); saveToLocal();
+      addLog("清空记录", `清空正式记录 ${count} 条，待审核记录 ${pendingCount} 条（已通过密码授权）`);
+      updateSearchResultCount();
+      showToast("🗑️ 已清空（操作已记入日志）");
+    });
+  }, "清空记录（需密码授权）");
+}
+
+/* ============ 登录 / 退出 ============ */
+function openLogin() {
+  document.getElementById("loginModal").style.display = "flex";
+  document.getElementById("loginUser").value = ""; document.getElementById("loginPass").value = "";
+  document.getElementById("loginErr").textContent = ""; document.getElementById("captchaArea").style.display = "block";
+  generateCaptcha(); document.getElementById("captchaInput").value = "";
+  const agreeBox = document.getElementById("agreeNotice"); const agreeRow = document.getElementById("agreeRow");
+  if (agreeBox) agreeBox.checked = false; if (agreeRow) agreeRow.classList.remove("agree-err");
+  document.getElementById("loginUser").focus();
+}
+function closeLogin() { document.getElementById("loginModal").style.display = "none"; }
+async function doLogin() {
+  const errEl = document.getElementById("loginErr");
+  const agreeBox = document.getElementById("agreeNotice"); const agreeRow = document.getElementById("agreeRow");
+  if (!agreeBox || !agreeBox.checked) {
+    errEl.textContent = "❌ 请先勾选同意《使用告知与权限规范》后再登录";
+    if (agreeRow) { agreeRow.classList.add("agree-err"); setTimeout(() => agreeRow.classList.remove("agree-err"), 400); }
+    return;
+  }
+  if (agreeRow) agreeRow.classList.remove("agree-err");
+  const user = document.getElementById("loginUser").value.trim();
+  const pass = document.getElementById("loginPass").value.trim();
+  if (!user) { errEl.textContent = "❌ 请输入账户"; return; }
+  if (!pass) { errEl.textContent = "❌ 请输入密码"; return; }
+  const input = document.getElementById("captchaInput").value.trim().toUpperCase();
+  if (!input) { errEl.textContent = "❌ 请输入验证码"; return; }
+  if (input !== captchaCode) { errEl.textContent = "❌ 验证码错误"; refreshCaptcha(); document.getElementById("captchaInput").value = ""; return; }
+  if (user === ownerAccount.user) {
+    const plain = await decryptPassword(ownerAccount.pass);
+    if (plain === pass) {
+      isOwner = true; isAdmin = true; isHelper = false; currentUser = user;
+      writeSession("owner", user);
+      applyRoleUI(); closeLogin(); addLog("登录", "所有者登录（已勾选同意使用告知与权限规范）");
+      showToast("✅ 所有者登录成功（请勿滥用最高权限）"); return;
+    }
+  }
+  for (const a of adminAccounts) {
+    if (a.user === user) {
+      const plain = await decryptPassword(a.pass);
+      if (plain === pass) {
+        isAdmin = true; isOwner = false; isHelper = false; currentUser = user;
+        writeSession("admin", user);
+        applyRoleUI(); closeLogin(); addLog("登录", `管理员「${user}」登录（已勾选同意使用告知与权限规范）`);
+        if (!getAllowAdminEdit()) showToast("✅ 管理员登录成功（改分权限未开启）");
+        else showToast("✅ 管理员登录成功（可改自己或助手录入的记录，不能改所有者记录）");
+        return;
+      }
+    }
+  }
+  for (const h of helperAccounts) {
+    if (h.user === user) {
+      const plain = await decryptPassword(h.pass);
+      if (plain === pass) {
+        isHelper = true; isAdmin = false; isOwner = false; currentUser = user;
+        writeSession("helper", user);
+        applyRoleUI(); closeLogin(); addHelperLog("登录", `助手「${user}」登录（已勾选同意使用告知与权限规范）`);
+        showToast("✅ 助手登录成功，提交记录需审核"); return;
+      }
+    }
+  }
+  errEl.textContent = "❌ 账户或密码错误"; refreshCaptcha();
+}
+function logout() {
+  const oldUser = currentUser; const wasHelper = isHelper;
+  isAdmin = false; isOwner = false; isHelper = false; currentUser = null;
+  clearSession();
+  applyRoleUI();
+  if (oldUser) { if (wasHelper) addHelperLog("退出", `助手「${oldUser}」退出`); else addLog("退出", `用户「${oldUser}」退出`); }
+  showToast("已退出");
+}
+
+/* ============ 应用角色界面 ============ */
+function applyRoleUI() {
+  const roleBadge = document.getElementById("roleBadge");
+  const loginBtn = document.getElementById("loginBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const adminHint = document.getElementById("adminHint");
+  const guestTip = document.getElementById("guestTip");
+  const helperTip = document.getElementById("helperTip");
+  const ownerPanel = document.getElementById("ownerPanel");
+  const adminHelperPanel = document.getElementById("adminHelperPanel");
+  const adminReviewPanel = document.getElementById("adminReviewPanel");
+  const helperMyPanel = document.getElementById("helperMyPanel");
+  const changeOwnPwdBtn = document.getElementById("changeOwnPwdBtn");
+
+  const adminAddHelperPanel = document.getElementById("adminAddHelperPanel");
+  const adminAddHelperDisabled = document.getElementById("adminAddHelperDisabled");
+  const adminHelperPwdPanel = document.getElementById("adminHelperPwdPanel");
+  const adminHelperPwdDisabled = document.getElementById("adminHelperPwdDisabled");
+  const adminViewHelperListPanel = document.getElementById("adminViewHelperListPanel");
+  const adminViewHelperListDisabled = document.getElementById("adminViewHelperListDisabled");
+  const adminViewHelperLogPanel = document.getElementById("adminViewHelperLogPanel");
+  const adminViewHelperLogDisabled = document.getElementById("adminViewHelperLogDisabled");
+
+  document.body.classList.remove("guest", "admin", "owner", "helper");
+
+  const realRole = getRealRole();
+  isOwner = (realRole === "owner");
+  isAdmin = (realRole === "admin");
+  isHelper = (realRole === "helper");
+
+  if (isOwner) {
+    document.body.classList.add("owner");
+    roleBadge.textContent = "所有者"; roleBadge.className = "badge owner";
+    adminHint.textContent = `（当前：${currentUser}，全部权限）`;
+    loginBtn.style.display = "none"; logoutBtn.style.display = "inline-block";
+    if (changeOwnPwdBtn) changeOwnPwdBtn.style.display = "none";
+    guestTip.style.display = "none"; if (helperTip) helperTip.style.display = "none";
+    if (helperMyPanel) helperMyPanel.style.display = "none";
+    ownerPanel.style.display = "block";
+    adminReviewPanel.style.display = "block";
+    adminHelperPanel.style.display = "none";
+
+    if (adminAddHelperPanel) adminAddHelperPanel.style.display = "none";
+    if (adminAddHelperDisabled) adminAddHelperDisabled.style.display = "none";
+    if (adminHelperPwdPanel) adminHelperPwdPanel.style.display = "none";
+    if (adminHelperPwdDisabled) adminHelperPwdDisabled.style.display = "none";
+    if (adminViewHelperListPanel) adminViewHelperListPanel.style.display = "none";
+    if (adminViewHelperListDisabled) adminViewHelperListDisabled.style.display = "none";
+    if (adminViewHelperLogPanel) adminViewHelperLogPanel.style.display = "none";
+    if (adminViewHelperLogDisabled) adminViewHelperLogDisabled.style.display = "none";
+
+    renderAdminEditState(); renderAdminHelperPwdState(); renderAdminClearState(); renderAdminClearHelperLogState();
+    renderAdminViewHelperListState(); renderAdminViewHelperLogState(); renderAdminAddHelperState();
+    renderAdminList(); renderHelperList(); renderLogs(); renderHelperLogs(); renderPendingList();
+
+  } else if (isAdmin) {
+    document.body.classList.add("admin");
+    roleBadge.textContent = "管理员"; roleBadge.className = "badge admin";
+    adminHint.textContent = getAllowAdminEdit() ? `（当前：${currentUser}，可改自己或助手录入的记录，不能改所有者记录）` : `（当前：${currentUser}，仅可删自己录入的记录）`;
+    loginBtn.style.display = "none"; logoutBtn.style.display = "inline-block";
+    if (changeOwnPwdBtn) changeOwnPwdBtn.style.display = "inline-block";
+    guestTip.style.display = "none"; if (helperTip) helperTip.style.display = "none";
+    if (helperMyPanel) helperMyPanel.style.display = "none";
+    ownerPanel.style.display = "none"; adminHelperPanel.style.display = "block"; adminReviewPanel.style.display = "block";
+
+    if (adminAddHelperPanel) adminAddHelperPanel.style.display = getAllowAdminAddHelper() ? "block" : "none";
+    if (adminAddHelperDisabled) adminAddHelperDisabled.style.display = getAllowAdminAddHelper() ? "none" : "block";
+    if (adminHelperPwdPanel) adminHelperPwdPanel.style.display = getAllowAdminHelperPwd() ? "block" : "none";
+    if (adminHelperPwdDisabled) adminHelperPwdDisabled.style.display = getAllowAdminHelperPwd() ? "none" : "block";
+    if (adminViewHelperListPanel) adminViewHelperListPanel.style.display = getAllowAdminViewHelperList() ? "block" : "none";
+    if (adminViewHelperListDisabled) adminViewHelperListDisabled.style.display = getAllowAdminViewHelperList() ? "none" : "block";
+    if (adminViewHelperLogPanel) adminViewHelperLogPanel.style.display = getAllowAdminViewHelperLog() ? "block" : "none";
+    if (adminViewHelperLogDisabled) adminViewHelperLogDisabled.style.display = getAllowAdminViewHelperLog() ? "none" : "block";
+
+    renderHelperList(); renderHelperLogs(); renderPendingList();
+
+  } else if (isHelper) {
+    document.body.classList.add("helper");
+    roleBadge.textContent = "助手"; roleBadge.className = "badge helper";
+    adminHint.textContent = `（当前：${currentUser}，提交需审核）`;
+    loginBtn.style.display = "none"; logoutBtn.style.display = "inline-block";
+    if (changeOwnPwdBtn) changeOwnPwdBtn.style.display = "inline-block";
+    guestTip.style.display = "none"; if (helperTip) helperTip.style.display = "block";
+    if (helperMyPanel) helperMyPanel.style.display = "block";
+    ownerPanel.style.display = "none"; adminHelperPanel.style.display = "none"; adminReviewPanel.style.display = "none";
+    renderMySubmissions();
+
+  } else {
+    document.body.classList.add("guest");
+    roleBadge.textContent = "访客"; roleBadge.className = "badge";
+    adminHint.textContent = "（仅查看）"; loginBtn.style.display = "inline-block"; logoutBtn.style.display = "none";
+    if (changeOwnPwdBtn) changeOwnPwdBtn.style.display = "none";
+    guestTip.style.display = "block"; if (helperTip) helperTip.style.display = "none";
+    if (helperMyPanel) helperMyPanel.style.display = "none";
+    ownerPanel.style.display = "none"; adminHelperPanel.style.display = "none"; adminReviewPanel.style.display = "none";
+  }
+  renderRecords(); renderStudents(); renderPendingList();
+  updateSearchResultCount();
+}
+
+/* ============ 初始化 ============ */
+async function init() {
+  loadNoticeState(); loadCustomRules(); loadFromLocal(); loadPendingRecords();
+  await loadAdminAccounts(); await loadHelperAccounts(); loadLogs(); loadHelperLogs();
+  await loadOwnerAccount(); loadAllowAdminEdit(); loadAllowAdminHelperPwd(); loadAllowAdminClear(); loadAllowAdminClearHelperLog();
+  loadAllowAdminViewHelperList(); loadAllowAdminViewHelperLog(); loadAllowAdminAddHelper(); loadFoldState();
+  loadOwnerSectionState();
+
+  (function setDefaultDate() {
+    const today = new Date(); const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0'); const dd = String(today.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    const dateInput = document.getElementById("dateInput"); if (dateInput) dateInput.value = dateStr;
+  })();
+
+  try {
+    const s = getRealSession();
+    if (s) {
+      if (s.role === "owner" && s.user === ownerAccount.user) {
+        isOwner = true; isAdmin = true; isHelper = false; currentUser = s.user;
+      } else if (s.role === "admin" && adminAccounts.some(a => a.user === s.user)) {
+        isAdmin = true; isOwner = false; isHelper = false; currentUser = s.user;
+      } else if (s.role === "helper" && helperAccounts.some(h => h.user === s.user)) {
+        isHelper = true; isAdmin = false; isOwner = false; currentUser = s.user;
+      } else {
+        clearSession();
+        isOwner = isAdmin = isHelper = false;
+        currentUser = null;
+        try { addLog("检测到非法会话", "已拒绝恢复身份"); } catch (e) {}
+      }
+    } else {
+      clearSession();
+    }
+  } catch(e) {
+    clearSession();
+  }
+
+  renderBehaviors(); renderStudents(); renderRecords(); renderRank(); updateCurrentBar(); applyRoleUI();
+  renderPendingList(); renderHelperList(); renderHelperLogs(); renderMySubmissions();
+  updateSearchResultCount();
+
+  const searchInput = document.getElementById("searchInput");
+  if (searchInput) {
+    searchInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") { e.preventDefault(); applySearch(); }
+    });
+  }
+}
+
+init();
+
+/* ============ 事件委托 ============ */
+const pendingContainer = document.getElementById("pendingListContainer");
+if (pendingContainer) {
+  pendingContainer.addEventListener("click", function (e) {
+    const target = e.target.closest("[data-act]"); if (!target) return;
+    const idx = parseInt(target.dataset.idx, 10); if (isNaN(idx)) return;
+    if (target.dataset.act === "approve") approvePending(idx);
+    else if (target.dataset.act === "reject") rejectPending(idx);
+  });
+}
+const myContainer = document.getElementById("mySubmissionsContainer");
+if (myContainer) {
+  myContainer.addEventListener("click", function (e) {
+    const target = e.target.closest(".withdraw"); if (!target) return;
+    const idx = parseInt(target.dataset.idx, 10); if (isNaN(idx)) return;
+    withdrawMySubmission(idx);
+  });
+}
+const helperListContainer = document.getElementById("helperListContainer");
+if (helperListContainer) {
+  helperListContainer.addEventListener("click", function (e) {
+    const viewBtn = e.target.closest(".pwd-view");
+    if (viewBtn) { const role = viewBtn.dataset.role; const idx = parseInt(viewBtn.dataset.idx, 10); if (isNaN(idx)) return; viewPassword(role, idx); return; }
+    const target = e.target.closest(".del-helper"); if (!target) return;
+    const idx = parseInt(target.dataset.idx, 10); if (isNaN(idx)) return;
+    deleteHelperAccount(idx);
+  });
+}
+const ownerHelperListContainer = document.getElementById("ownerHelperListContainer");
+if (ownerHelperListContainer) {
+  ownerHelperListContainer.addEventListener("click", function (e) {
+    const viewBtn = e.target.closest(".pwd-view");
+    if (viewBtn) {
+      const role = viewBtn.dataset.role; const idx = parseInt(viewBtn.dataset.idx, 10); if (isNaN(idx)) return;
+      const el = document.getElementById(`pwd-helper-owner-${idx}`);
+      if (!el) return;
+      const acc = helperAccounts[idx];
+      if (!acc) return;
+      requestAuth(`查看助手账户「${acc.user}」的密码`, async () => {
+        const plain = await decryptPassword(acc.pass);
+        if (!plain) { el.textContent = "⚠️ 无法解密（旧数据）"; el.style.color = "#e67e22"; }
+        else { el.textContent = plain; el.classList.add("revealed"); el.style.color = "#c0392b"; }
+        addLog("查看密码", `助手账户：${acc.user}（已通过密码授权）`);
+        showToast("🔓 已授权显示密码，请勿外传");
+      });
+      return;
+    }
+    const target = e.target.closest(".del-helper"); if (!target) return;
+    const idx = parseInt(target.dataset.idx, 10); if (isNaN(idx)) return;
+    deleteHelperAccount(idx);
+  });
+}
+const adminListContainer = document.getElementById("adminListContainer");
+if (adminListContainer) {
+  adminListContainer.addEventListener("click", function (e) {
+    const viewBtn = e.target.closest(".pwd-view");
+    if (viewBtn) { const role = viewBtn.dataset.role; const idx = parseInt(viewBtn.dataset.idx, 10); if (isNaN(idx)) return; viewPassword(role, idx); return; }
+    const target = e.target.closest(".del-admin"); if (!target) return;
+    const idx = parseInt(target.dataset.idx, 10); if (isNaN(idx)) return;
+    deleteAdminAccount(idx);
+  });
+}
+const recordList = document.getElementById("recordList");
+if (recordList) {
+  recordList.addEventListener("click", function (e) {
+    const delBtn = e.target.closest(".del"); if (delBtn) { openDeleteModal(delBtn.dataset.id); return; }
+    const editBtn = e.target.closest(".edit-score"); if (editBtn) { openScoreModal(editBtn.dataset.id); return; }
+  });
+}
+const agreeNoticeEl = document.getElementById("agreeNotice");
+if (agreeNoticeEl) {
+  agreeNoticeEl.addEventListener("change", function () {
+    const agreeRow = document.getElementById("agreeRow");
+    if (agreeRow && this.checked) agreeRow.classList.remove("agree-err");
+  });
+}
+
+/* ============ 回车快捷 ============ */
+document.getElementById("customName").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addCustomBehavior(); } });
+document.getElementById("customScore").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addCustomBehavior(); } });
+document.getElementById("loginUser").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); document.getElementById("loginPass").focus(); } });
+document.getElementById("loginPass").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); document.getElementById("captchaInput").focus(); } });
+document.getElementById("captchaInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); doLogin(); } });
+document.getElementById("newBehaviorInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); document.getElementById("newScoreValue").focus(); } });
+document.getElementById("newScoreValue").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); document.getElementById("editReason").focus(); } });
+document.getElementById("editReason").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); confirmEditScore(); } });
+document.getElementById("deleteReason").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); confirmDeleteRecord(); } });
+document.getElementById("oldPwdInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); document.getElementById("newPwdInput").focus(); } });
+document.getElementById("newPwdInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); document.getElementById("newPwdInput2").focus(); } });
+document.getElementById("newPwdInput2").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); confirmChangeOwnPwd(); } });
+document.getElementById("newAdminUser").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addAdminAccount(); } });
+document.getElementById("newAdminPwd").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addAdminAccount(); } });
+document.getElementById("newHelperUser").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addHelperAccount(); } });
+document.getElementById("newHelperPwd").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addHelperAccount(); } });
+document.getElementById("newHelperUserOwner").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addHelperAccountOwner(); } });
+document.getElementById("newHelperPwdOwner").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addHelperAccountOwner(); } });
+document.getElementById("authPwdInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); confirmAuth(); } });
+document.getElementById("newHelperPassOwner").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); changeHelperPassword("owner"); } });
+document.getElementById("newHelperPassAdmin").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); changeHelperPassword("admin"); } });
+
+/* ============ 遮罩关闭 ============ */
+document.getElementById("loginModal").addEventListener("click", e => { if (e.target === document.getElementById("loginModal")) closeLogin(); });
+document.getElementById("scoreModal").addEventListener("click", e => { if (e.target === document.getElementById("scoreModal")) closeScoreModal(); });
+document.getElementById("deleteModal").addEventListener("click", e => { if (e.target === document.getElementById("deleteModal")) closeDeleteModal(); });
+document.getElementById("changePwdModal").addEventListener("click", e => { if (e.target === document.getElementById("changePwdModal")) closeChangeOwnPwd(); });
+document.getElementById("pwdShowModal").addEventListener("click", e => { if (e.target === document.getElementById("pwdShowModal")) closePwdShow(); });
+document.getElementById("authModal").addEventListener("click", e => { if (e.target === document.getElementById("authModal")) closeAuthModal(); });
+document.getElementById("confirmModal").addEventListener("click", e => { if (e.target === document.getElementById("confirmModal")) { document.getElementById("confirmModal").style.display = "none"; } });
+</script>
+</body>
+</html>
